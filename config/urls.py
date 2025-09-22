@@ -9,6 +9,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('apps/subject/', include('apps.subject.urls')),
     path('apps/account/', include('apps.account.urls')),
+    path('apps/attendance/', include('apps.attendance.urls')),
+
 
     # JWT Authentication
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
