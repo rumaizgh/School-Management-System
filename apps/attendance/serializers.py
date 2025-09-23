@@ -13,7 +13,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
             'student', 'student_name',
             'subject', 'subject_name',
             'teacher', 'teacher_name',
-            'date', 'status', 'is_active',
+            'date', 'status',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['teacher', 'created_at', 'updated_at']

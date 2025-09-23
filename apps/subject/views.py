@@ -11,10 +11,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
 
     def get_permissions(self):
-        """
-        Allow only teachers to create/update/delete.
-        Students or others can read (GET).
-        """
         if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
             permission_classes = [IsAuthenticated, IsTeacher]
         else:
@@ -22,7 +18,4 @@ class SubjectViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
-        """
-        Automatically assign the logged-in teacher as the subject's teacher.
-        """
         serializer.save(teacher=self.request.user)

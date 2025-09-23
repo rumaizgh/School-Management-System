@@ -37,7 +37,6 @@ class Attendance(models.Model):
         ],
         default="present",
     )
-    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)  
     updated_at = models.DateTimeField(auto_now=True)   
 
