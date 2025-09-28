@@ -1,19 +1,23 @@
 from rest_framework import serializers
-from .models import Attendance
+from .models import AttendanceSession, AttendanceRecord
 
-class AttendanceSerializer(serializers.ModelSerializer):
-    student_name = serializers.CharField(source="student.name", read_only=True)
-    subject_name = serializers.CharField(source="subject.subject_name", read_only=True)
-    teacher_name = serializers.CharField(source="teacher.name", read_only=True)
+class AttendanceRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AttendanceRecord
+        fields = ['id', 'student', 'status']
+
+class AttendanceSessionSerializer(serializers.ModelSerializer):
+    records = AttendanceRecordSerializer(many=True)
+    teacher = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
-        model = Attendance
-        fields = [
-            'id',
-            'student', 'student_name',
-            'subject', 'subject_name',
-            'teacher', 'teacher_name',
-            'date', 'status',
-            'created_at', 'updated_at',
-        ]
-        read_only_fields = ['teacher', 'created_at', 'updated_at']
+        model = AttendanceSession
+        fields = ['id', 'teacher', 'subject', 'date', 'records']
+
+    def create(self, validated_data):
+        records_data = validated_data.pop('records')
+        session = AttendanceSession.objects.create(**validated_data)
+        for record in records_data:
+            AttendanceRecord.objects.create(session=session, **record)
+        return session
+

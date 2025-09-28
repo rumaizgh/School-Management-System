@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from apps.academics.models import Batch
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -27,16 +29,18 @@ class UserData(AbstractUser):
         ('student', 'Student'),
         ('teacher', 'Teacher'),
     ]
-    BATCHES = [
-        ('plus_one', 'Plus_One'),
-        ('plus_two', 'Plus_Two')
-    ]
 
     username = None
     user_type = models.CharField(max_length=10, choices=CHOICES)
     name = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(unique = True, blank=True, null=True)
-    batch_type = models.CharField(max_length=10, choices=BATCHES, null=True, blank=True)
+    batch = models.ForeignKey(
+        Batch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="students"
+    )
     phone = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)

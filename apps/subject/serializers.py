@@ -5,4 +5,4 @@ class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subject
         fields = ['id', 'subject_name', 'subject_code', 'teacher']
-        read_only_fields = ['teacher'] 
+        read_only_fields = ['teacher','batch'] 

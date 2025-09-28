@@ -1,5 +1,7 @@
 from django.db import models
 from apps.account.models import UserData 
+from apps.academics.models import Batch
+
 
 class Subject(models.Model):
     subject_name = models.CharField(max_length=100)
@@ -10,6 +12,12 @@ class Subject(models.Model):
         null=True, 
         limit_choices_to={'user_type': 'teacher'},
         related_name='subjects'
+    )
+    batch = models.ForeignKey(
+        Batch,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name="subjects"
     )
 
     def __str__(self):
