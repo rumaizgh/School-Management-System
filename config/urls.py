@@ -7,9 +7,11 @@ from rest_framework_simplejwt.views import (
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('apps/subject/', include('apps.subject.urls')),
-    path('apps/account/', include('apps.account.urls')),
-    path('apps/attendance/', include('apps.attendance.urls')),
+    path('api/subject/', include('apps.subject.urls')),
+    path('api/account/', include('apps.account.urls')),
+    path('api/attendance/', include('apps.attendance.urls')),
+    path('api/batch/', include('apps.academics.urls')),
+    path('api/fee/', include('apps.academics.urls')),
 
 
     # JWT Authentication

@@ -40,8 +40,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'apps.account',
     'apps.subject',
-    'apps.attendance'
-
+    'apps.attendance',
+    'apps.academics'
 ]
 
 REST_FRAMEWORK = {

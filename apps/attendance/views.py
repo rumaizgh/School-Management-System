@@ -2,13 +2,18 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .models import Attendance
-from .serializers import AttendanceSerializer
+from .models import AttendanceSession
+from .serializers import AttendanceSessionSerializer, AttendanceRecordSerializer
 from .permissions import IsTeacher
-class AttendanceViewSet(viewsets.ModelViewSet):
-    queryset = Attendance.objects.all()
-    serializer_class = AttendanceSerializer
-    authentication_classes = [JWTAuthentication]
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from .models import AttendanceSession
+from .serializers import AttendanceSessionSerializer
+
+class AttendanceSessionViewSet(viewsets.ModelViewSet):
+    queryset = AttendanceSession.objects.all()
+    serializer_class = AttendanceSessionSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
         if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:

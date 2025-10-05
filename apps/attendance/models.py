@@ -2,43 +2,33 @@ from django.db import models
 from apps.account.models import UserData
 from apps.subject.models import Subject
 from django.utils import timezone
+from apps.academics.models import Batch
 
 
-
-class Attendance(models.Model):
-    student = models.ForeignKey(
-        UserData, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        limit_choices_to={'user_type': 'student'},
-        related_name="attendances_as_student",
-    )
-    subject = models.ForeignKey(
-        Subject,
-        on_delete=models.SET_NULL, 
-        null=True,
-        related_name="attendances",
-    )
-    teacher = models.ForeignKey(
-        UserData, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        limit_choices_to={'user_type': 'teacher'},
-        related_name="attendances_as_teacher", 
-    )
-    date = models.DateField(auto_now_add=True)  
-    status = models.CharField(         
-        max_length=10,
-        choices=[
-            ("present", "Present"),
-            ("absent", "Absent"),
-            ("late", "Late"),
-            ("leave", "Leave"),
-        ],
-        default="present",
-    )
-    created_at = models.DateTimeField(default=timezone.now)  
-    updated_at = models.DateTimeField(auto_now=True)   
+class AttendanceSession(models.Model):
+    teacher = models.ForeignKey(UserData, limit_choices_to={'user_type': 'teacher'}, on_delete=models.CASCADE)
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    date = models.DateField(default=timezone.now)
 
     def __str__(self):
-        return f"{self.student} - {self.subject} ({self.date})"
+        return f"{self.subject} - {self.date}"
+
+
+class AttendanceRecord(models.Model):
+    STATUS_CHOICES = [
+        ('present', 'Present'),
+        ('absent', 'Absent'),
+    ]
+    session = models.ForeignKey(
+        AttendanceSession,
+        on_delete=models.CASCADE,
+        related_name="records"
+    )
+    student = models.ForeignKey(UserData, limit_choices_to={'user_type': 'student'}, on_delete=models.CASCADE)
+    status = models.CharField(max_length=7, choices=STATUS_CHOICES, default="absent")
+
+    class Meta:
+        unique_together = ('session', 'student')
+
+    def __str__(self):
+        return f"{self.student} - {self.session.date} - {self.status}"
