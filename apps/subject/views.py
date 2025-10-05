@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticate
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Subject
 from .serializers import SubjectSerializer
-from .permissions import IsTeacher
+from apps.academics.permissions import IsTeacher
 
 class SubjectViewSet(viewsets.ModelViewSet):
     queryset = Subject.objects.all()

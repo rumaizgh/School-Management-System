@@ -6,11 +6,13 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import UserData
 from .serializers import UserDataSerializer 
+from apps.academics.permissions import IsAdmin
 
 # CRUD API for UserData
 class UserDataViewSet(viewsets.ModelViewSet):
     queryset = UserData.objects.all()
     serializer_class = UserDataSerializer
+    permission_classes = [IsAdmin]
 
 
 # API for login

@@ -31,13 +31,23 @@ class Fee(models.Model):
     paid_on = models.DateField(blank=True, null=True)
     
     def save(self, *args, **kwargs):
-        # Automatically update paid status
+        # If instance already exists, add to the existing paid_amount
+        if self.pk:
+            prev = Fee.objects.get(pk=self.pk)
+            # If paid_amount is being updated (not initial assignment)
+            if self.paid_amount != prev.paid_amount:
+                self.paid_amount = prev.paid_amount + self.paid_amount
+
+        # Always calculate balance
+        self.balance_amount = self.amount - self.paid_amount
+
         if self.paid_amount >= self.amount:
             self.paid = True
+            self.balance_amount = 0
             if not self.paid_on:
-                self.paid_on = timezone.now().date()  # Set current date when fully paid
+                self.paid_on = timezone.now().date()
         else:
             self.paid = False
-            self.balance_amount = self.amount - self.paid_amount
-            self.paid_on = None  # Clear paid_on if not fully paid
+            self.paid_on = None
+
         super().save(*args, **kwargs)

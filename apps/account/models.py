@@ -3,6 +3,8 @@ from django.db import models
 from apps.academics.models import Batch
 
 
+
+
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -35,7 +37,7 @@ class UserData(AbstractUser):
     name = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(unique = True, blank=True, null=True)
     batch = models.ForeignKey(
-        Batch,
+        'academics.Batch',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -46,6 +48,12 @@ class UserData(AbstractUser):
     date_of_birth = models.DateField(blank=True, null=True)
     parent_name = models.CharField(max_length=100, null=True, blank=True)
     parent_contact = models.CharField(max_length=15, null=True, blank=True)
+    subject = models.ForeignKey(
+        'subject.Subject',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="subjects")
 
     objects = UserManager()
 
