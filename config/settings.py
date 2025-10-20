@@ -25,7 +25,8 @@ SECRET_KEY = 'django-insecure-@hv5_-)&#v+m2pdv+ff_=co7uhznom77b8ka3t*un^dqpubkib
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = ['192.168.0.121', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['192.168.183.137','localhost', '127.0.0.1']
 
 
 # Application definition
@@ -41,7 +42,8 @@ INSTALLED_APPS = [
     'apps.account',
     'apps.subject',
     'apps.attendance',
-    'apps.academics'
+    'apps.academics',
+    'corsheaders'
 ]
 
 REST_FRAMEWORK = {
@@ -52,6 +54,7 @@ REST_FRAMEWORK = {
 AUTH_USER_MODEL = 'account.UserData'
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -60,6 +63,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'config.urls'
 
