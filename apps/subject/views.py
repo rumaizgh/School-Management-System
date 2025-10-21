@@ -3,7 +3,8 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticate
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Subject
 from .serializers import SubjectSerializer
-from apps.academics.permissions import IsTeacher
+from .permissions import IsAdmin
+
 
 class SubjectViewSet(viewsets.ModelViewSet):
     queryset = Subject.objects.all()
@@ -12,10 +13,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
-            permission_classes = [IsAuthenticated, IsTeacher]
+            permission_classes = [IsAuthenticated, IsAdmin]
         else:
             permission_classes = [IsAuthenticatedOrReadOnly]
         return [permission() for permission in permission_classes]
-
-    def perform_create(self, serializer):
-        serializer.save(teacher=self.request.user)

@@ -1,6 +1,5 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
-from apps.academics.models import Batch
 
 
 
@@ -40,24 +39,30 @@ class UserData(AbstractUser):
     user_type = models.CharField(max_length=10, choices=CHOICES)
     name = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(unique = True, blank=True, null=True)
+    classs = models.ForeignKey(
+        'academics.Batch',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="students_in_batch"
+    )
     batch = models.ForeignKey(
         'academics.Batch',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="students"
+        related_name="students_in_class"
     )
     phone = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
     parent_name = models.CharField(max_length=100, null=True, blank=True)
     parent_contact = models.CharField(max_length=15, null=True, blank=True)
-    subject = models.ForeignKey(
+    subject = models.ManyToManyField(
         'subject.Subject',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="subjects")
+        related_name="teachers",
+        blank=True
+    )
 
     objects = UserManager()
 
