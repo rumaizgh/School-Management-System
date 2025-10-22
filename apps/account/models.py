@@ -1,6 +1,5 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
-from apps.academics.models import Batch
 
 
 
@@ -18,11 +17,14 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_active', True)  
+        extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault('user_type', 'admin')
+
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser must have is_staff=True.')
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
+
         return self.create_user(email, password, **extra_fields)
 
 class UserData(AbstractUser):
@@ -30,30 +32,37 @@ class UserData(AbstractUser):
     CHOICES = [
         ('student', 'Student'),
         ('teacher', 'Teacher'),
+        ('admin', 'Admin')
     ]
 
     username = None
     user_type = models.CharField(max_length=10, choices=CHOICES)
     name = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(unique = True, blank=True, null=True)
+    classs = models.ForeignKey(
+        'academics.Batch',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="students_in_batch"
+    )
     batch = models.ForeignKey(
         'academics.Batch',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="students"
+        related_name="students_in_class"
     )
     phone = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
     parent_name = models.CharField(max_length=100, null=True, blank=True)
     parent_contact = models.CharField(max_length=15, null=True, blank=True)
-    subject = models.ForeignKey(
+    subject = models.ManyToManyField(
         'subject.Subject',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="subjects")
+        related_name="teachers",
+        blank=True
+    )
 
     objects = UserManager()
 

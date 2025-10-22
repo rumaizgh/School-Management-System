@@ -5,16 +5,40 @@ from django.utils import timezone
 
 class Batch(models.Model):
     CLASS_CHOICES = [
-        ('plus_one', 'Plus One'),
-        ('plus_two', 'Plus Two'),
+        (f"{i} std", f"{i} std") for i in range(1, 11)
+    ] + [
+        ("+1 std", "+1 std"), 
+        ("+2 std", "+2 std")
     ]
-    name = models.CharField(max_length=50, choices=CLASS_CHOICES)
-    year = models.IntegerField()
 
-    section = models.CharField(max_length=10, blank=True, null=True)  
+    classs = models.CharField(
+        max_length=10,
+        choices=CLASS_CHOICES,
+        blank=True,
+        null=True
+    )
+
+    YEAR_CHOICES = [
+        (f"{y}-{str(y+1)[-2:]}", f"{y}-{str(y+1)[-2:]}")
+        for y in range(2020, 2050)
+    ]
+
+    year = models.CharField(
+        max_length=7,
+        choices=YEAR_CHOICES,
+    )
+
+    BATCH_CHOICES = [(chr(i), chr(i)) for i in range(ord('A'), ord('Z') + 1)]
+
+    batch = models.CharField(
+        max_length=1, 
+        choices=BATCH_CHOICES, 
+        blank=True, 
+        null=True
+    )
 
     def __str__(self):
-        return f"{self.get_name_display()} - {self.year}{f' ({self.section})' if self.section else ''}"
+        return f"{self.batch} - {self.year}{f' ({self.classs})' if self.classs else ''}"
  
 class Fee(models.Model):
     student = models.ForeignKey(

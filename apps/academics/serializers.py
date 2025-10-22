@@ -4,7 +4,7 @@ from .models import Batch,Fee
 class BatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Batch
-        fields = ['name', 'year', 'section']
+        fields = "__all__"
 
 class FeeSerializer(serializers.ModelSerializer):
     class Meta:
