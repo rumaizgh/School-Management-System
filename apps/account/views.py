@@ -50,3 +50,11 @@ class ViewAllTeachers(APIView):
         teachers = UserData.objects.filter(user_type='teacher')
         serializer = UserDataSerializer(teachers, many=True)
         return Response(serializer.data)
+    
+class ViewAllStudents(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        students = UserData.objects.filter(user_type='student')
+        serializer = UserDataSerializer(students, many=True)
+        return Response(serializer.data)
