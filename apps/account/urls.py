@@ -9,6 +9,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('login/', LoginView.as_view(), name='login'),
     path('teachers/', ViewAllTeachers.as_view(), name='teachers'),
-    path('students/', ViewAllStudents.as_view(), name='students'),
+    path('students/', ViewAllTeachers.as_view(), name='students'),
 
 ]
