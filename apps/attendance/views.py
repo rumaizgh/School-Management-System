@@ -31,32 +31,40 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from apps.subject.models import Subject
 
+from apps.academics.models import Batch
+
 class AtdSession(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
         teacher = request.user
 
+        # Get subjects allocated to teacher
         subjects_fk = Subject.objects.filter(teacher=teacher)
-        
         subjects_m2m = teacher.subject.all()
+        all_subjects = (subjects_fk | subjects_m2m).distinct().select_related('classs')
         
-        all_subjects = (subjects_fk | subjects_m2m).distinct()
+        # Get all batches added by admin
+        all_batches = Batch.objects.all()
         
-        all_subjects = all_subjects.select_related('classs')
+        # Prepare batch data
+        batch_data = [
+            {
+                "id": b.id,
+                "class": b.classs,
+                "year": b.year,
+                "batch": b.batch,
+                "display": str(b)
+            }
+            for b in all_batches
+        ]
         
+        # Prepare subject data
         subject_data = [
             {
                 "id": s.id,
                 "subject_name": s.subject_name,
                 "subject_code": s.subject_code,
-                "batch": {
-                    "id": s.classs.id,
-                    "class": s.classs.classs,
-                    "year": s.classs.year,
-                    "batch": s.classs.batch,
-                    "display": str(s.classs)
-                } if s.classs else None
             }
             for s in all_subjects
         ]
@@ -64,5 +72,6 @@ class AtdSession(viewsets.ViewSet):
         return Response({
             "teacher_id": teacher.id,
             "teacher_name": teacher.name,
-            "subjects": subject_data
+            "subjects": subject_data,
+            "batches": batch_data
         })
