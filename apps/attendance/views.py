@@ -36,38 +36,6 @@ from apps.academics.models import Batch
 class AtdSession(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
-    def create(self, request):
-        teacher = request.user
-
-        batch_id = request.data.get("batch_id")
-        subject_id = request.data.get("subject_id")
-        start_time = request.data.get("start_time")
-        end_time = request.data.get("end_time")
-
-        time = f"{start_time} - {end_time}"
-
-        if not batch_id or not subject_id or not time:
-            return Response({"error": "Missing batch_id, subject_id, or time"}, status=400)
-
-        batch = get_object_or_404(Batch, id=batch_id)
-        subject = get_object_or_404(Subject, id=subject_id)
-
-        attendance = AttendanceSession.objects.create(
-            teacher=teacher,
-            batch=batch,
-            subject=subject,
-            time=time
-        )
-
-        return Response({
-            "message": "Attendance session created successfully",
-            "session_id": attendance.id,
-            "teacher": teacher.name,
-            "batch": str(batch),
-            "subject": subject.subject_name,
-            "time": time
-        }, status=201)
-
     def list(self, request):
         teacher = request.user
 
@@ -100,3 +68,38 @@ class AtdSession(viewsets.ViewSet):
             "subjects": subject_data,
             "batches": batch_data
         })
+
+class AtdSessionStart(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request):
+        teacher = request.user
+
+        batch_id = request.data.get("batch_id")
+        subject_id = request.data.get("subject_id")
+        start_time = request.data.get("start_time")
+        end_time = request.data.get("end_time")
+
+        time = f"{start_time} - {end_time}"
+
+        if not batch_id or not subject_id or not time:
+            return Response({"error": "Missing batch_id, subject_id, or time"}, status=400)
+
+        batch = get_object_or_404(Batch, id=batch_id)
+        subject = get_object_or_404(Subject, id=subject_id)
+
+        attendance = AttendanceSession.objects.create(
+            teacher=teacher,
+            batch=batch,
+            subject=subject,
+            time=time
+        )
+
+        return Response({
+            "message": "Attendance session created successfully",
+            "session_id": attendance.id,
+            "teacher": teacher.name,
+            "batch": str(batch),
+            "subject": subject.subject_name,
+            "time": time
+        }, status=201)
