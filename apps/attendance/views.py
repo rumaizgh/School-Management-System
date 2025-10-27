@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404, redirect
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from apps.subject.models import Subject
+from apps.account.models import UserData
 from .models import AttendanceSession
 from .serializers import AttendanceSessionSerializer
 from .permissions import IsTeacher
@@ -103,3 +104,26 @@ class AtdSessionStart(viewsets.ViewSet):
             "subject": subject.subject_name,
             "time": time
         }, status=201)
+
+class AttendanceTake(viewsets.ViewSet):
+
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, batch_id):
+        batch = get_object_or_404(Batch, id=batch_id)
+        students_qs = UserData.objects.filter(user_type='student', batch=batch)
+
+        students = [
+            {
+                "id": s.id,
+                "name": s.name,
+                "email": s.email,
+            }
+            for s in students_qs
+        ]
+
+        return Response({
+            "batch": str(batch),
+            "student_count": len(students),
+            "students": students
+        })
