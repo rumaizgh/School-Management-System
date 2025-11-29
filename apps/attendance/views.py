@@ -4,13 +4,18 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from apps.subject.models import Subject
 from apps.account.models import UserData
-from .models import AttendanceSession
-from .serializers import AttendanceSessionSerializer
+from .models import AttendanceSession, AttendanceRecord
+from .serializers import AttendanceSessionSerializer, AttendanceRecordSerializer
 from .permissions import IsTeacher
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from .models import AttendanceSession
 from .serializers import AttendanceSessionSerializer
+from rest_framework.response import Response
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from apps.subject.models import Subject
+from apps.academics.models import Batch
 
 class AttendanceSessionViewSet(viewsets.ModelViewSet):
     queryset = AttendanceSession.objects.all()
@@ -27,12 +32,6 @@ class AttendanceSessionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(teacher=self.request.user)
 
-from rest_framework.response import Response
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
-from apps.subject.models import Subject
-
-from apps.academics.models import Batch
 
 class AtdSession(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -127,3 +126,12 @@ class AttendanceTake(viewsets.ViewSet):
             "student_count": len(students),
             "students": students
         })
+
+class AttendanceRecordViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request):
+        serializer = AttendanceRecordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Attendance records created successfully"}, status=201)
