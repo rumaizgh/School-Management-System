@@ -39,5 +39,4 @@ class UserDataSerializer(serializers.ModelSerializer):
 
         if subjects is not None:
             instance.subject.set(subjects)
-
         return instance
