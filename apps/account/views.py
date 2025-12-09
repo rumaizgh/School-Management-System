@@ -10,11 +10,26 @@ from .models import UserData
 from apps.academics.permissions import IsAdmin
 
 
-class UserDataViewSet(viewsets.ModelViewSet):
-    queryset = UserData.objects.all()
-    serializer_class = UserDataSerializer
-    permission_classes = [IsAdmin]
+# class UserDataViewSet(viewsets.ModelViewSet):
+#     queryset = UserData.objects.all()
+#     serializer_class = UserDataSerializer
+#     permission_classes = [IsAdmin]
 
+class UserDataView(APIView):
+    def post(self,request):
+        serializer = UserDataSerializer(data = request.data)
+        if (serializer.is_valid()):
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
+    
+    def patch(self,request,id):
+        objects = UserData.objects.get(id = id)
+        serializer = UserDataSerializer(objects, data = request.data, partial = True)
+        if (serializer.is_valid()):
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -46,15 +61,24 @@ class LoginView(APIView):
 class ViewAllTeachers(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request):
-        teachers = UserData.objects.filter(user_type='teacher')
-        serializer = UserDataSerializer(teachers, many=True)
+    def get(self,request, id=None):
+        if id:
+            teachers = UserData.objects.filter(user_type='teacher',id = id)
+            serializer = UserDataSerializer(teachers, many = True)
+            return Response(serializer.data)
+        teachers = UserData.objects.filter(user_type = 'teacher')
+        serializer = UserDataSerializer(teachers, many = True)
         return Response(serializer.data)
     
 class ViewAllStudents(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request):
+    def get(self, request, id=None):
+        if id:
+            students = UserData.objects.filter(user_type='student', id = id)
+            serializer = UserDataSerializer(students, many=True)
+            return Response(serializer.data)
+        
         students = UserData.objects.filter(user_type='student')
-        serializer = UserDataSerializer(students, many=True)
+        serializer = UserDataSerializer(students, many = True)
         return Response(serializer.data)

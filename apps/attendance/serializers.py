@@ -11,3 +11,8 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttendanceRecord
         fields = '__all__'
+
+class AttendanceRecordStudentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AttendanceRecord
+        fields = ['student', 'status']

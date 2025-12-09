@@ -1,23 +1,28 @@
 from rest_framework.views import APIView
 from .models import AttendanceSession, AttendanceRecord
 from apps.subject.models import Subject
-from .serializers import AttendanceSessionSerializer, AttendanceRecordSerializer
+from .serializers import AttendanceSessionSerializer, AttendanceRecordSerializer, AttendanceRecordStudentSerializer
 from rest_framework.response import Response
 from apps.account.models import UserData
 from apps.account.serializers import UserDataSerializer
 
 class AttendanceSessionCreate(APIView):
-    def get(self,request,id):
-        atdSession = AttendanceSession.objects.get(id=id,teacher=request.user)
-        serializer = AttendanceSessionSerializer(atdSession)
-        return Response(serializer.data)
-
     def post(self,request):
         serializer = AttendanceSessionSerializer(data=request.data)
         if (serializer.is_valid()):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors)
+    
+class ViewAttendanceSessions(APIView):
+    def get(self,request,id=None):
+        if id:
+            records = AttendanceSession.objects.get(id=id)
+            serializer = AttendanceSessionSerializer(records)
+            return Response(serializer.data)
+        records = AttendanceSession.objects.all()
+        serializer = AttendanceSessionSerializer(records, many=True)
+        return Response(serializer.data)
     
 class AttendanceStudentsList(APIView):
     def get(self,request,id):
@@ -35,15 +40,23 @@ class AttendanceStudentsList(APIView):
         return Response(serializer.errors)
 
 class AttendanceRecordView(APIView):
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return AttendanceRecordStudentSerializer
+        return AttendanceRecordSerializer
+    
     def get(self,request,id):
         session = AttendanceSession.objects.get(id=id)
+        status = request.GET.get("status")
         record = AttendanceRecord.objects.filter(session=session)
-        serializer = AttendanceRecordSerializer(record, many=True)
+        if status:
+            record = record.filter(status=status)
+        serializer = self.get_serializer_class()(record, many=True)
         return Response(serializer.data)
     
     def patch(self,request,id):
         record = AttendanceRecord.objects.get(id=id)
-        serializer = AttendanceRecordSerializer(record, data = request.data, partial = True)
+        serializer = self.get_serializer_class()(record, data = request.data, partial = True)
         if (serializer.is_valid()):
             serializer.save()
             return Response(serializer.data)
