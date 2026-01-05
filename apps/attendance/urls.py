@@ -7,6 +7,7 @@ router = DefaultRouter()
 urlpatterns = [
     path('', include(router.urls)),
     path('atdsessioncreate/', AttendanceSessionCreate.as_view(), name='atdsessioncreate'),
+    path('atdsessioncreate/<int:id>/', AttendanceSessionCreate.as_view(), name='atdsessioncreate'),
     path('viewsession/<int:id>/', ViewAttendanceSessions.as_view(), name='viewsession'),
     path('viewsession/', ViewAttendanceSessions.as_view(), name='viewsession'),
     path('liststudents/<int:id>/', AttendanceStudentsList.as_view(), name='liststudents'),
