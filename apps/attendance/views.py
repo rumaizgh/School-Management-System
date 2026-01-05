@@ -5,8 +5,15 @@ from .serializers import AttendanceSessionSerializer, AttendanceRecordSerializer
 from rest_framework.response import Response
 from apps.account.models import UserData
 from apps.account.serializers import UserDataSerializer
+from apps.subject.serializers import SubjectSerializer
+from apps.academics.models import Batch
+from apps.academics.serializers import BatchSerializer
+from rest_framework.permissions import IsAuthenticated
+
 
 class AttendanceSessionCreate(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self,request):
         serializer = AttendanceSessionSerializer(data=request.data)
         if (serializer.is_valid()):
@@ -14,6 +21,25 @@ class AttendanceSessionCreate(APIView):
             return Response(serializer.data)
         return Response(serializer.errors)
     
+    def get(self, request, id=None):
+        if not id:
+            return Response({"error": "Teacher ID is required"}, status=400)
+        
+        teacher = UserData.objects.get(id=id, user_type='teacher')
+        
+        # Get subjects of this teacher
+        subjects = Subject.objects.filter(teacher=teacher).values('id', 'subject_name')
+        subjects_data = list(subjects)
+
+        # Get batches of this teacher
+        batches = Batch.objects.filter(subjects__teacher=teacher).values('batch')
+        batches_data = list(batches)
+        
+        return Response({
+            "subjects": subjects_data,
+            "batches": batches_data
+        })
+
 class ViewAttendanceSessions(APIView):
     def get(self,request,id=None):
         if id:

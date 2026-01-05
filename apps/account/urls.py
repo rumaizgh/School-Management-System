@@ -7,6 +7,8 @@ router = DefaultRouter()
 
 urlpatterns = [
     path('', include(router.urls)),
+    
+    path('userdata/', UserDataView.as_view(), name='userdata'),
     path('userdata/<int:id>/', UserDataView.as_view(), name='userdata'),
 
     path('login/', LoginView.as_view(), name='login'),

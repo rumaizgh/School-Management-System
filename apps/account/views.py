@@ -16,13 +16,13 @@ from apps.academics.permissions import IsAdmin
 #     permission_classes = [IsAdmin]
 
 class UserDataView(APIView):
-    def post(self,request):
-        serializer = UserDataSerializer(data = request.data)
-        if (serializer.is_valid()):
+    def post(self, request):
+        serializer = UserDataSerializer(data=request.data)
+        if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors)
-    
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
     def patch(self,request,id):
         objects = UserData.objects.get(id = id)
         serializer = UserDataSerializer(objects, data = request.data, partial = True)
