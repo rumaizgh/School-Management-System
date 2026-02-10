@@ -6,13 +6,14 @@ from .models import Subject
 from .serializers import SubjectSerializer
 from .permissions import IsAdmin
 
-class AddSubject(APIView):
+class ViewSubject(APIView):
     def get(self,request,id):
         subject = Subject.objects.get(id=id)
         serializer = SubjectSerializer(subject)
         return Response(serializer.data)
 
-    def post(self,request,id):
+class AddSubject(APIView):
+    def post(self,request):
         serializer = SubjectSerializer(data = request.data)
         if (serializer.is_valid()):
             serializer.save()
