@@ -11,5 +11,6 @@ urlpatterns = [
     path('viewsession/<int:id>/', ViewAttendanceSessions.as_view(), name='viewsession'),
     path('viewsession/', ViewAttendanceSessions.as_view(), name='viewsession'),
     path('liststudents/<int:id>/', AttendanceStudentsList.as_view(), name='liststudents'),
+    path('atdrecordcreate/', AttendanceStudentsList.as_view(), name='atdrecordcreate'),
     path('showatdrec/<int:id>/', AttendanceRecordView.as_view(), name='showatdrec')
 ]

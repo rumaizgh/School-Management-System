@@ -8,8 +8,8 @@ from apps.academics.models import Batch
 class AttendanceSession(models.Model):
     teacher = models.ForeignKey(UserData, limit_choices_to={'user_type': 'teacher'}, on_delete=models.CASCADE)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-    batch = models.ForeignKey(Batch,null= True, on_delete=models.CASCADE)
-    date = models.DateField(default=timezone.now)
+    classs = models.ForeignKey(Batch,  on_delete=models.CASCADE)
+    date = models.DateField(default=timezone.localdate)
     time = models.CharField(max_length=10, null= True)
 
     def __str__(self):

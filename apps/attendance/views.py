@@ -58,8 +58,8 @@ class AttendanceStudentsList(APIView):
         serializer = UserDataSerializer(students, many=True)
         return Response(serializer.data)
 
-    def post(self,request,id):
-        serializer = AttendanceRecordSerializer(data=request.data)
+    def post(self,request):
+        serializer = AttendanceRecordSerializer(data=request.data, many=True)
         if (serializer.is_valid()):
             serializer.save()
             return Response(serializer.data)

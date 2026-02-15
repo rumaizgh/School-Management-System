@@ -9,7 +9,8 @@ class UserDataSerializer(serializers.ModelSerializer):
         queryset=Subject.objects.all(),
         many=True,
         write_only=True,
-        source='subjects'
+        source='subjects',
+        required=False
     )
 
     class Meta:
