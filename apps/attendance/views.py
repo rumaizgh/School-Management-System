@@ -32,7 +32,7 @@ class AttendanceSessionCreate(APIView):
         subjects_data = list(subjects)
 
         # Get batches of this teacher
-        batches = Batch.objects.filter(subjects__teacher=teacher).values('classs')
+        batches = Batch.objects.filter(subjects__teacher=teacher).values('id','classs')
         batches_data = list(batches)
         
         return Response({
