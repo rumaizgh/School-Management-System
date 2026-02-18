@@ -43,8 +43,9 @@ class AttendanceSessionCreate(APIView):
 class ViewAttendanceSessions(APIView):
     def get(self,request,id=None):
         if id:
-            records = AttendanceSession.objects.get(id=id)
-            serializer = AttendanceSessionSerializer(records)
+            teacher = UserData.objects.get(id=id, user_type='teacher')
+            records = AttendanceSession.objects.filter(teacher=teacher)
+            serializer = AttendanceSessionSerializer(records, many=True)
             return Response(serializer.data)
         records = AttendanceSession.objects.all()
         serializer = AttendanceSessionSerializer(records, many=True)
