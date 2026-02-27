@@ -82,3 +82,4 @@ class ViewAllStudents(APIView):
         students = UserData.objects.filter(user_type='student')
         serializer = UserDataSerializer(students, many = True)
         return Response(serializer.data)
+        
