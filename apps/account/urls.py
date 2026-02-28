@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import LoginView,ViewAllTeachers, ViewAllStudents, UserDataView
+from .views import LoginView,ViewAllTeachers, ViewAllStudents, CreateUser
 
 router = DefaultRouter()
 # router.register(r'users', UserDataViewSet)
@@ -8,8 +8,8 @@ router = DefaultRouter()
 urlpatterns = [
     path('', include(router.urls)),
     
-    path('userdata/', UserDataView.as_view(), name='userdata'),
-    path('userdata/<int:id>/', UserDataView.as_view(), name='userdata'),
+    # path('userdata/', UserDataView.as_view(), name='userdata'),
+    # path('userdata/<int:id>/', UserDataView.as_view(), name='userdata'),
 
     path('login/', LoginView.as_view(), name='login'),
 
@@ -17,6 +17,8 @@ urlpatterns = [
     path('teachers/', ViewAllTeachers.as_view(), name='teachers'),
 
     path('student/<int:id>/', ViewAllStudents.as_view(), name='student'),
-    path('students/', ViewAllStudents.as_view(), name='students')
+    path('students/', ViewAllStudents.as_view(), name='students'),
+
+    path('createuser/',CreateUser.as_view(), name='createuser')
 
 ]

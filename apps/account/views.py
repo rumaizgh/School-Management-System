@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from .serializers import UserDataSerializer
-from rest_framework.permissions import AllowAny
+from .serializers import UserDataSerializer, UserCreateSerializer
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import UserData
 from apps.academics.permissions import IsAdmin
 
@@ -15,21 +15,21 @@ from apps.academics.permissions import IsAdmin
 #     serializer_class = UserDataSerializer
 #     permission_classes = [IsAdmin]
 
-class UserDataView(APIView):
-    def post(self, request):
-        serializer = UserDataSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+# class UserDataView(APIView):
+#     def post(self, request):
+#         serializer = UserDataSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=201)
+#         return Response(serializer.errors, status=400)
 
-    def patch(self,request,id):
-        objects = UserData.objects.get(id = id)
-        serializer = UserDataSerializer(objects, data = request.data, partial = True)
-        if (serializer.is_valid()):
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors)
+#     def patch(self,request,id):
+#         objects = UserData.objects.get(id = id)
+#         serializer = UserDataSerializer(objects, data = request.data, partial = True)
+#         if (serializer.is_valid()):
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors)
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -83,3 +83,11 @@ class ViewAllStudents(APIView):
         serializer = UserDataSerializer(students, many = True)
         return Response(serializer.data)
         
+class CreateUser(APIView):
+    permission_classes = [IsAuthenticated,IsAdmin]
+    def post(self,request):
+        serializer = UserCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data,  status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    
