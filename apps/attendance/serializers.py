@@ -13,6 +13,7 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class AttendanceRecordStudentSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='student.name', read_only=True)
     class Meta:
         model = AttendanceRecord
-        fields = ['student', 'status']
+        fields = ['name','status']
