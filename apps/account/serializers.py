@@ -44,7 +44,7 @@ class UserDataSerializer(serializers.ModelSerializer):
         if subjects is not None:
             instance.subject.set(subjects)
         return instance
-    
+
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -54,45 +54,23 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "name",
             "email",
             "password",
-            "phone",
             "classs",
-            "subject",
-            "user_type",
+            "phone",
         )
         extra_kwargs = {
-            "user_type": {"required": True},
+            "email": {"required": True},
+            "phone" :{"required" : True}
         }
 
-
-    def validate(self, attrs):
-        user_type = attrs.get("user_type")
-
-        if user_type not in ["student", "teacher"]:
-            raise serializers.ValidationError("Invalid user type.")
-        
-        # Student must have email 
-        if user_type == "student" and not attrs.get("email"):
-            raise serializers.ValidationError({"email": "Email is required for students."})
-        
-        # Teacher must have phone
-        if user_type == "teacher" and not attrs.get("phone"):
-            raise serializers.ValidationError("Phone is required for teachers.")
-
-        return attrs
-
+    def validate_email(self, value):
+        if UserData.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Email already exists.")
+        return value
+    
     def validate_phone(self, value):
         if len(value) < 10:
             raise serializers.ValidationError("Phone number must be at least 10 digits.")
         return value
 
     def create(self, validated_data):
-        subjects = validated_data.pop("subject", [])
-        user_type = validated_data.get("user_type")
-
-        user = UserData.objects.create_user(**validated_data)
-
-        # Only teachers get subjects
-        if user_type == "teacher":
-            user.subject.set(subjects)
-
-        return user
+        return UserData.objects.create_user(**validated_data)

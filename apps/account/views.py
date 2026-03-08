@@ -83,11 +83,22 @@ class ViewAllStudents(APIView):
         serializer = UserDataSerializer(students, many = True)
         return Response(serializer.data)
         
-class CreateUser(APIView):
+class CreateStudent(APIView):
     permission_classes = [IsAuthenticated,IsAdmin]
+
     def post(self,request):
         serializer = UserCreateSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user_type="student")
             return Response(serializer.data,  status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
+
+class CreateTeacher(APIView):
+    permission_classes = [IsAuthenticated,IsAdmin]
+    
+    def post(self,request):
+        serializer = UserCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user_type="teacher")
+            return Response(serializer.data,  status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
