@@ -44,10 +44,10 @@ class ViewAttendanceSessions(APIView):
     def get(self,request,id=None):
         if id:
             teacher = UserData.objects.get(id=id, user_type='teacher')
-            records = AttendanceSession.objects.filter(teacher=teacher).order_by('date')
+            records = AttendanceSession.objects.filter(teacher=teacher).order_by('-date')
             serializer = AttendanceSessionSerializer(records, many=True)
             return Response(serializer.data)
-        records = AttendanceSession.objects.all().order_by('date')
+        records = AttendanceSession.objects.all().order_by('-date')
         serializer = AttendanceSessionSerializer(records, many=True)
         return Response(serializer.data)
     
