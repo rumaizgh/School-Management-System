@@ -3,9 +3,12 @@ from .models import AttendanceSession, AttendanceRecord
 from apps.account.models import UserData
 
 class AttendanceSessionSerializer(serializers.ModelSerializer):
+    teacher = serializers.CharField(source='teacher.name', read_only=True)
+    subject = serializers.CharField(source='subject.subject_name', read_only=True)
+    classs = serializers.CharField(source='classs.classs', read_only=True)
     class Meta:
         model = AttendanceSession
-        fields = '__all__'
+        fields = ['teacher','date','time','classs','subject']
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
     class Meta:
