@@ -20,4 +20,4 @@ class AttendanceRecordStudentSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='student.name', read_only=True)
     class Meta:
         model = AttendanceRecord
-        fields = ['name','status']
+        fields = ['id','name','status']
