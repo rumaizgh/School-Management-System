@@ -81,10 +81,17 @@ class AttendanceRecordView(APIView):
         serializer = self.get_serializer_class()(record, many=True)
         return Response(serializer.data)
     
-    def patch(self,request,id):
-        record = AttendanceRecord.objects.get(id=id)
-        serializer = self.get_serializer_class()(record, data = request.data, partial = True)
-        if (serializer.is_valid()):
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors)
+    def patch(self, request, id):
+        updated_records = []
+
+        for item in request.data:
+            record = AttendanceRecord.objects.get(id=item['id'], session_id=id)
+            serializer = AttendanceRecordSerializer(record, data=item, partial=True)
+
+            if serializer.is_valid():
+                serializer.save()
+                updated_records.append(serializer.data)
+            else:
+                return Response(serializer.errors)
+
+        return Response(updated_records)
