@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'apps.subject',
     'apps.attendance',
     'apps.academics',
-    'corsheaders'
+    'corsheaders',
+    'import_export',
 ]
 
 REST_FRAMEWORK = {

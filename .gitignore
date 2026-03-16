@@ -17,3 +17,7 @@ env/
 # IDE settings
 .vscode/
 .idea/
+
+# Ignore Django migrations
+**/migrations/
+!**/migrations/__init__.py
