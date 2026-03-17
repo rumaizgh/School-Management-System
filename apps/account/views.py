@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate
 from .serializers import UserDataSerializer, UserCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import UserData
-from apps.academics.permissions import IsAdmin,IsTeacher,IsStudent
+from apps.academics.permissions import IsStudentOrAdmin,IsTeacherOrAdmin
 
 
 # class UserDataViewSet(viewsets.ModelViewSet):
@@ -85,7 +85,7 @@ class ViewAllStudents(APIView):
         return Response(serializer.data)
         
 class CreateStudent(APIView):
-    permission_classes = [IsAuthenticated,IsStudent,IsAdmin]
+    permission_classes = [IsAuthenticated,IsStudentOrAdmin]
 
     def post(self,request):
         serializer = UserCreateSerializer(data=request.data)
@@ -110,7 +110,7 @@ class CreateStudent(APIView):
         return Response(serializer.errors)
     
 class CreateTeacher(APIView):
-    permission_classes = [IsAuthenticated,IsTeacher,IsAdmin]
+    permission_classes = [IsAuthenticated,IsTeacherOrAdmin]
     
     def post(self,request):
         serializer = UserCreateSerializer(data=request.data)
