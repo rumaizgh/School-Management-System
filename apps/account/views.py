@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from apps.academics.models import Batch
 from .serializers import UserDataSerializer, UserCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import UserData
@@ -86,6 +87,14 @@ class ViewAllStudents(APIView):
         
 class CreateStudent(APIView):
     permission_classes = [IsAuthenticated,IsStudentOrAdmin]
+
+    def get(self,request):
+        batches = Batch.objects.values('id','classs').distinct()
+        batches_data = list(batches)
+        
+        return Response({
+            "batches": batches_data
+        })
 
     def post(self,request):
         serializer = UserCreateSerializer(data=request.data)
