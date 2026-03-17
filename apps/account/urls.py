@@ -21,9 +21,11 @@ urlpatterns = [
 
     path('createstudent/',CreateStudent.as_view(), name='createstudent'),
     path('editstudent/<int:id>/',CreateStudent.as_view(), name='editstudent'),
+    path('deletestudent/<int:id>/', CreateStudent.as_view(), name='deletestudent'),
 
     path('createteacher/', CreateTeacher.as_view(), name='createteacher'),
     path('editteacher/<int:id>/', CreateTeacher.as_view(), name='editteacher'),
+    path('deleteteacher/<int:id>/', CreateTeacher.as_view(), name='deleteteacher'),
 
 
 ]

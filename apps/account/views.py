@@ -109,6 +109,23 @@ class CreateStudent(APIView):
 
         return Response(serializer.errors)
     
+    def delete(self, request, id):
+        user = get_object_or_404(UserData, id=id, user_type="student")
+
+        if not user.is_active:
+            return Response(
+                {"error": "Student already deactivated"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+
+        return Response(
+            {"message": "Student deactivated successfully"},
+            status=status.HTTP_200_OK
+        )
+    
 class CreateTeacher(APIView):
     permission_classes = [IsAuthenticated,IsTeacherOrAdmin]
     
@@ -133,3 +150,20 @@ class CreateTeacher(APIView):
             return Response(serializer.data)
 
         return Response(serializer.errors)
+    
+    def delete(self, request, id):
+        user = get_object_or_404(UserData, id=id, user_type="teacher")
+
+        if not user.is_active:
+            return Response(
+                {"error": "Student already deactivated"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+
+        return Response(
+            {"message": "Student deactivated successfully"},
+            status=status.HTTP_200_OK
+        )
