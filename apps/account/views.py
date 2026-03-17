@@ -95,7 +95,7 @@ class CreateStudent(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
     
     def patch(self, request, id):
-        user = get_object_or_404(UserData, id=id)
+        user = get_object_or_404(UserData, id=id, user_type="student")
 
         serializer = UserDataSerializer(
             user,
@@ -118,3 +118,18 @@ class CreateTeacher(APIView):
             serializer.save(user_type="teacher")
             return Response(serializer.data,  status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
+    
+    def patch(self, request, id):
+        user = get_object_or_404(UserData, id=id, user_type="teacher")
+
+        serializer = UserDataSerializer(
+            user,
+            data=request.data,
+            partial=True
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+
+        return Response(serializer.errors)
