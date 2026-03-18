@@ -65,7 +65,7 @@ class ViewAllTeachers(APIView):
 
     def get(self,request, id=None):
         if id:
-            teachers = UserData.objects.filter(user_type='teacher',id = id)
+            teachers = UserData.objects.filter(user_type='teacher',id = id, is_active = True)
             serializer = UserDataSerializer(teachers, many = True)
             return Response(serializer.data)
         teachers = UserData.objects.filter(user_type = 'teacher')
@@ -77,7 +77,7 @@ class ViewAllStudents(APIView):
 
     def get(self, request, id=None):
         if id:
-            students = UserData.objects.filter(user_type='student', id = id)
+            students = UserData.objects.filter(user_type='student', id = id , is_active = True)
             serializer = UserDataSerializer(students, many=True)
             return Response(serializer.data)
         
