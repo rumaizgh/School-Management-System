@@ -12,6 +12,7 @@ class UserDataSerializer(serializers.ModelSerializer):
         source='subjects',
         required=False
     )
+    class_name = serializers.CharField(source='classs.classs', read_only=True)
 
     class Meta:
         model = UserData

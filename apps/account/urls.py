@@ -19,12 +19,14 @@ urlpatterns = [
     path('student/<int:id>/', ViewAllStudents.as_view(), name='student'),
     path('students/', ViewAllStudents.as_view(), name='students'),
 
+    path('getbatch/',CreateStudent.as_view(), name='getbatch'),
     path('createstudent/',CreateStudent.as_view(), name='createstudent'),
     path('editstudent/<int:id>/',CreateStudent.as_view(), name='editstudent'),
-    path('getbatch/',CreateStudent.as_view(), name='getbatch'),
+    path('deletestudent/<int:id>/', CreateStudent.as_view(), name='deletestudent'),
 
     path('createteacher/', CreateTeacher.as_view(), name='createteacher'),
     path('editteacher/<int:id>/', CreateTeacher.as_view(), name='editteacher'),
+    path('deleteteacher/<int:id>/', CreateTeacher.as_view(), name='deleteteacher'),
 
 
 ]
