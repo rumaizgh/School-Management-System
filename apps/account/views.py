@@ -68,7 +68,7 @@ class ViewAllTeachers(APIView):
             teachers = UserData.objects.filter(user_type='teacher',id = id, is_active = True)
             serializer = UserDataSerializer(teachers, many = True)
             return Response(serializer.data)
-        teachers = UserData.objects.filter(user_type = 'teacher')
+        teachers = UserData.objects.filter(user_type = 'teacher', is_active = True)
         serializer = UserDataSerializer(teachers, many = True)
         return Response(serializer.data)
     
@@ -81,7 +81,7 @@ class ViewAllStudents(APIView):
             serializer = UserDataSerializer(students, many=True)
             return Response(serializer.data)
         
-        students = UserData.objects.filter(user_type='student')
+        students = UserData.objects.filter(user_type='student', is_active = True)
         serializer = UserDataSerializer(students, many = True)
         return Response(serializer.data)
         
