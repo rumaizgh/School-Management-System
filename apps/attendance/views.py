@@ -87,7 +87,7 @@ class AttendanceStudentsList(APIView):
     def get(self, request, id):
         session = AttendanceSession.objects.get(id=id)
         classs = session.classs
-        students = UserData.objects.filter(classs=classs, user_type="student")
+        students = UserData.objects.filter(classs=classs, user_type="student", is_active = True)
         serializer = UserDataSerializer(students, many=True)
         return Response(serializer.data)
 
