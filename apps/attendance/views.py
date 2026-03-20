@@ -6,6 +6,7 @@ from .serializers import (
     AttendanceSessionSerializer,
     AttendanceRecordSerializer,
     AttendanceRecordStudentSerializer,
+    ViewAttendanceRecordStudentSerializer
 )
 from rest_framework.response import Response
 from apps.account.models import UserData
@@ -128,3 +129,15 @@ class AttendanceRecordView(APIView):
                 return Response(serializer.errors)
 
         return Response(updated_records)
+
+class StudentAttendanceView(APIView):
+    def get(self, request):
+        status = request.GET.get("status")
+
+        records = AttendanceRecord.objects.filter(student=request.user)
+
+        if status:
+            records = records.filter(status=status)
+
+        serializer = ViewAttendanceRecordStudentSerializer(records, many=True)
+        return Response(serializer.data)

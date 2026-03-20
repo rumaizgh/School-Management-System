@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import AttendanceSessionCreate, AttendanceStudentsList, AttendanceRecordView, ViewAttendanceSessions
+from .views import AttendanceSessionCreate, AttendanceStudentsList, AttendanceRecordView, ViewAttendanceSessions,StudentAttendanceView
 
 router = DefaultRouter()
 
@@ -13,5 +13,6 @@ urlpatterns = [
     path('deletesession/<int:id>/', ViewAttendanceSessions.as_view(), name='deletesession'),
     path('liststudents/<int:id>/', AttendanceStudentsList.as_view(), name='liststudents'),
     path('atdrecordcreate/', AttendanceStudentsList.as_view(), name='atdrecordcreate'),
-    path('showatdrec/<int:id>/', AttendanceRecordView.as_view(), name='showatdrec')
+    path('showatdrec/<int:id>/', AttendanceRecordView.as_view(), name='showatdrec'),
+    path('studentatdrecord/', StudentAttendanceView.as_view(), name='studentatdrecord')
 ]
