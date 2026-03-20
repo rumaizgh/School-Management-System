@@ -21,3 +21,11 @@ class AttendanceRecordStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttendanceRecord
         fields = ['id','name','status']
+
+class ViewAttendanceRecordStudentSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='student.name', read_only=True)
+    teacher = serializers.CharField(source='session.teacher', read_only=True)
+    date = serializers.CharField(source='session.date', read_only=True)
+    class Meta:
+        model = AttendanceRecord
+        fields = ['teacher','date','id','name','status']
