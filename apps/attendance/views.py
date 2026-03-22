@@ -17,6 +17,7 @@ from apps.academics.serializers import BatchSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 
 
 class AttendanceSessionCreate(APIView):
@@ -33,8 +34,7 @@ class AttendanceSessionCreate(APIView):
         if not id:
             return Response({"error": "Teacher ID is required"}, status=400)
 
-        teacher = UserData.objects.get(id=id, user_type="teacher")
-
+        teacher = get_object_or_404(UserData, id=id, user_type="teacher")
         # Get subjects of this teacher
         subjects = Subject.objects.filter(teacher=teacher).values("id", "subject_name")
         subjects_data = list(subjects)

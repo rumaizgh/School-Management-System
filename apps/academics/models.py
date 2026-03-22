@@ -4,18 +4,8 @@ from django.utils import timezone
 
 
 class Batch(models.Model):
-    # CLASS_CHOICES = [
-    #     (f"{i} std", f"{i} std") for i in range(1, 11)
-    # ] + [
-    #     ("+1 std", "+1 std"), 
-    #     ("+2 std", "+2 std")
-    # ]
 
-    classs = models.CharField(
-        max_length=10,
-        blank=True,
-        null=True
-    )
+    classs = models.CharField(max_length=10)
 
     YEAR_CHOICES = [
         (f"{y}-{str(y+1)[-2:]}", f"{y}-{str(y+1)[-2:]}")
@@ -27,17 +17,11 @@ class Batch(models.Model):
         choices=YEAR_CHOICES,
     )
 
-    # BATCH_CHOICES = [(chr(i), chr(i)) for i in range(ord('A'), ord('Z') + 1)]
-
-    # batch = models.CharField(
-    #     max_length=1, 
-    #     choices=BATCH_CHOICES, 
-    #     blank=True, 
-    #     null=True
-    # )
+    class Meta:
+        unique_together = ['classs', 'year']
 
     def __str__(self):
-        return f"{self.year}{f' ({self.classs})' if self.classs else ''}"
+        return f"{self.classs}{f' ({self.year})' if self.year else ''}"
  
 class Fee(models.Model):
     student = models.ForeignKey(
