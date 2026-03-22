@@ -1,7 +1,10 @@
 from rest_framework.routers import DefaultRouter
-from .views import BatchViewSet, FeeViewSet
+from .views import CreateClass
+from django.urls import path, include
 
 router = DefaultRouter()
-router.register(r'batch', BatchViewSet, basename='batch')
-router.register(r'fee', FeeViewSet, basename='fee')
-urlpatterns = router.urls
+
+urlpatterns = [
+    path('class/', CreateClass.as_view()),
+    path('class/<int:id>/', CreateClass.as_view()),
+]

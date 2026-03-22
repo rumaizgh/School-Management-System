@@ -1,30 +1,41 @@
-from rest_framework import viewsets
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Batch, Fee
 from .serializers import BatchSerializer, FeeSerializer
 from .permissions import IsAdmin
+from django.shortcuts import get_object_or_404
+from rest_framework import status
 
-class BatchViewSet(viewsets.ModelViewSet):
-    queryset = Batch.objects.all()
-    serializer_class = BatchSerializer
-    authentication_classes = [JWTAuthentication]
-
-    def get_permissions(self):
-        if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
-            permission_classes = [IsAdmin]
-        else:
-            permission_classes = [IsAuthenticatedOrReadOnly]
-        return [permission() for permission in permission_classes]
-
-class FeeViewSet(viewsets.ModelViewSet):
-    queryset = Fee.objects.all()
-    serializer_class = FeeSerializer
-    authentication_classes = [JWTAuthentication]
-
-    def get_permissions(self):
-        if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
-            permission_classes = [IsAuthenticated, IsAdmin]
-        else:
-            permission_classes = [IsAuthenticatedOrReadOnly]
-        return [permission() for permission in permission_classes]
+class CreateClass(APIView):
+    permission_classes=[IsAdmin]
+    def post(self,request):
+        serializer=BatchSerializer(data = request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
+    
+    def get(self,request,id=None):
+        if id:
+            batch=get_object_or_404(Batch, id=id)
+            serializer = BatchSerializer(batch)
+            return Response(serializer.data)
+        
+        batches=Batch.objects.all()
+        serializer=BatchSerializer(batches,many=True)
+        return Response(serializer.data)
+    
+    def patch(self,request,id):
+        batch=get_object_or_404(Batch,id=id)
+        serializer=BatchSerializer(batch,data=request.data,partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
+    
+    def delete(self,request,id):
+        batch = get_object_or_404(Batch,id=id)
+        batch.delete()
+        return Response({"message": "Batch deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
