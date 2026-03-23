@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticate
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Batch, Fee
 from .serializers import BatchSerializer, FeeSerializer
-from .permissions import IsAdmin
+from .permissions import IsAdmin,IsTeacher
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 
@@ -39,3 +39,11 @@ class CreateClass(APIView):
         batch = get_object_or_404(Batch,id=id)
         batch.delete()
         return Response({"message": "Batch deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+    
+class ViewAllClassTeacher(APIView):
+    permission_classes=[IsTeacher]
+    def get(self,request,id=None):
+        teacher = request.user
+        classs = Batch.objects.filter(subjects__teacher=teacher).distinct()
+        serializer = BatchSerializer(classs,many=True)
+        return Response(serializer.data)
