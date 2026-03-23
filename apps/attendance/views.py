@@ -141,3 +141,12 @@ class StudentAttendanceView(APIView):
 
         serializer = ViewAttendanceRecordStudentSerializer(records, many=True)
         return Response(serializer.data)
+    
+class TeacherStudentAttendanceView(APIView):
+    def get(self,request,id):
+        student=get_object_or_404(UserData,id=id,user_type="student")
+        classs_id = request.GET.get("class")
+        records = AttendanceRecord.objects.filter(student=student,session__teacher=request.user,session__classs=classs_id)
+        serializer = AttendanceRecordStudentSerializer(records, many=True)
+        return Response(serializer.data)
+    
