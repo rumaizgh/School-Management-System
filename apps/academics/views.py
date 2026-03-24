@@ -3,10 +3,12 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Batch, Fee
-from .serializers import BatchSerializer, FeeSerializer
+from .serializers import BatchSerializer
+from apps.account.serializers import UserDataSerializer
 from .permissions import IsAdmin,IsTeacher
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from apps.account.models import UserData
 
 class CreateClass(APIView):
     permission_classes=[IsAdmin]
@@ -46,4 +48,11 @@ class ViewAllClassTeacher(APIView):
         teacher = request.user
         classs = Batch.objects.filter(subjects__teacher=teacher).distinct()
         serializer = BatchSerializer(classs,many=True)
+        return Response(serializer.data)
+    
+class ViewStudentsByClass(APIView):
+    def get(self, request, id):
+        classs = get_object_or_404(Batch,id=id)
+        students = UserData.objects.filter(classs=classs, user_type="student", is_active = True)
+        serializer = UserDataSerializer(students, many=True)
         return Response(serializer.data)
