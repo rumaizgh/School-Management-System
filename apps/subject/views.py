@@ -5,11 +5,16 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Subject
 from .serializers import SubjectSerializer
 from .permissions import IsAdmin
+from django.shortcuts import get_object_or_404
 
 class ViewSubject(APIView):
-    def get(self,request,id):
-        subject = Subject.objects.get(id=id)
-        serializer = SubjectSerializer(subject)
+    def get(self,request,id=None):
+        if id:
+            subject = get_object_or_404(Subject,id=id)
+            serializer = SubjectSerializer(subject)
+            return Response(serializer.data)
+        subject = Subject.objects.all()
+        serializer = SubjectSerializer(subject,many=True)
         return Response(serializer.data)
 
 class AddSubject(APIView):
