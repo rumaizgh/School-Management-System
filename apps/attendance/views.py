@@ -1,12 +1,13 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
-from .models import AttendanceSession, AttendanceRecord
+from .models import AttendanceSession, AttendanceRecord, TimeTable
 from apps.subject.models import Subject
 from .serializers import (
     AttendanceSessionSerializer,
     AttendanceRecordSerializer,
     AttendanceRecordStudentSerializer,
-    ViewAttendanceRecordStudentSerializer
+    ViewAttendanceRecordStudentSerializer,
+    TimeTableSerializer
 )
 from rest_framework.response import Response
 from apps.account.models import UserData
@@ -148,5 +149,11 @@ class TeacherStudentAttendanceView(APIView):
         classs_id = request.GET.get("class")
         records = AttendanceRecord.objects.filter(student=student,session__teacher=request.user,session__classs=classs_id)
         serializer = AttendanceRecordStudentSerializer(records, many=True)
+        return Response(serializer.data)
+    
+class TimeTablesView(APIView):
+    def get(self, request):
+        timetables = TimeTable.objects.all().order_by("day", "start_time")
+        serializer = TimeTableSerializer(timetables, many=True)
         return Response(serializer.data)
     
