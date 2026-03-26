@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import AttendanceSession, AttendanceRecord
+from .models import AttendanceSession, AttendanceRecord, TimeTable
 from apps.account.models import UserData
 
 class AttendanceSessionSerializer(serializers.ModelSerializer):
@@ -30,3 +30,21 @@ class ViewAttendanceRecordStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttendanceRecord
         fields = ['teacher','date','id','name','status']
+
+class TimeTableSerializer(serializers.ModelSerializer):
+    classs = serializers.CharField(source='teacher.classs', read_only=True)
+    subject = serializers.CharField(source='teacher.subject', read_only=True)
+
+    class Meta:
+        model = TimeTable
+        # fields = [
+        #     'id',
+        #     'teacher',
+        #     'classs',
+        #     'subject',
+        #     'date',
+        #     'day',
+        #     'start_time',
+        #     'end_time',
+        # ]
+        fields = '__all__'
