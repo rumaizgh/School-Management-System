@@ -56,3 +56,10 @@ class ViewStudentsByClass(APIView):
         students = UserData.objects.filter(classs=classs, user_type="student", is_active = True)
         serializer = UserDataSerializer(students, many=True)
         return Response(serializer.data)
+    
+class ViewTeachersByClass(APIView):
+    def get(self, request, id):
+        classs = get_object_or_404(Batch,id=id)
+        teachers = UserData.objects.filter(classs=classs, user_type="teacher", is_active = True)
+        serializer = UserDataSerializer(teachers, many=True)
+        return Response(serializer.data)
