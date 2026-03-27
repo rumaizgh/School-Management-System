@@ -1,6 +1,9 @@
 from datetime import timezone
 from django.db import models
 from django.utils import timezone
+from multiselectfield import MultiSelectField
+from apps.account.models import UserData
+
 
 
 class Batch(models.Model):
@@ -58,3 +61,41 @@ class Fee(models.Model):
             self.paid_on = None
 
         super().save(*args, **kwargs)
+
+    
+class TimeTable(models.Model):
+
+    DAY_CHOICES = [
+        ('mon', 'Monday'),
+        ('tue', 'Tuesday'),
+        ('wed', 'Wednesday'),
+        ('thu', 'Thursday'),
+        ('fri', 'Friday'),
+        ('sat', 'Saturday'),
+        ('sun', 'Sunday')
+    ]
+
+    classs = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
+    subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
+    teacher = models.ForeignKey(UserData, limit_choices_to={'user_type': 'teacher'}, on_delete=models.CASCADE)
+    date = models.DateField(default=timezone.localdate)
+    day = MultiSelectField(choices=DAY_CHOICES)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    # class Meta:
+    #     constraints = [
+    #         models.UniqueConstraint(
+    #             fields=['teacher', 'day', 'start_time'],
+    #             name='unique_teacher_schedule'
+    #         ),
+    #         models.UniqueConstraint(
+    #             fields=['batch', 'day', 'start_time'],
+    #             name='unique_batch_schedule'
+    #         ),
+    #     ]
+
+    #     ordering = ['day', 'start_time']
+
+    def __str__(self):
+        return f"{self.start_time} - {self.end_time}"

@@ -1,20 +1,17 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
-from .models import AttendanceSession, AttendanceRecord, TimeTable
+from .models import AttendanceSession, AttendanceRecord
 from apps.subject.models import Subject
 from .serializers import (
     AttendanceSessionSerializer,
     AttendanceRecordSerializer,
     AttendanceRecordStudentSerializer,
-    ViewAttendanceRecordStudentSerializer,
-    TimeTableSerializer
+    ViewAttendanceRecordStudentSerializer
 )
 from rest_framework.response import Response
 from apps.account.models import UserData
 from apps.account.serializers import UserDataSerializer
-from apps.subject.serializers import SubjectSerializer
 from apps.academics.models import Batch
-from apps.academics.serializers import BatchSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.db import transaction
@@ -150,10 +147,3 @@ class TeacherStudentAttendanceView(APIView):
         records = AttendanceRecord.objects.filter(student=student,session__teacher=request.user,session__classs=classs_id)
         serializer = AttendanceRecordStudentSerializer(records, many=True)
         return Response(serializer.data)
-    
-class TimeTablesView(APIView):
-    def get(self, request):
-        timetables = TimeTable.objects.all().order_by("day", "start_time")
-        serializer = TimeTableSerializer(timetables, many=True)
-        return Response(serializer.data)
-    

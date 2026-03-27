@@ -5,13 +5,22 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Batch, Fee
 from .serializers import BatchSerializer
 from apps.account.serializers import UserDataSerializer
+from apps.academics.serializers import TimeTableSerializer
 from .permissions import IsAdmin,IsTeacher
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from apps.account.models import UserData
+from apps.academics.models import TimeTable
 
 class CreateClass(APIView):
-    permission_classes=[IsAdmin]
+    permission_classes=[IsAdmin]    
+class TimeTablesView(APIView):
+    def get(self, request):
+        timetables = TimeTable.objects.all().order_by("day", "start_time")
+        serializer = TimeTableSerializer(timetables, many=True)
+        return Response(serializer.data)
+    
+
     def post(self,request):
         serializer=BatchSerializer(data = request.data)
         if serializer.is_valid():
@@ -63,3 +72,10 @@ class ViewTeachersByClass(APIView):
         teachers = UserData.objects.filter(classs=classs, user_type="teacher", is_active = True)
         serializer = UserDataSerializer(teachers, many=True)
         return Response(serializer.data)
+     
+class TimeTablesView(APIView):
+    def get(self, request):
+        timetables = TimeTable.objects.all().order_by("day", "start_time")
+        serializer = TimeTableSerializer(timetables, many=True)
+        return Response(serializer.data)
+    

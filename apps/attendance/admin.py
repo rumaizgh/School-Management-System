@@ -4,4 +4,3 @@ from .models import *
 # Register your models here.
 admin.site.register(AttendanceSession)
 admin.site.register(AttendanceRecord)
-admin.site.register(TimeTable)

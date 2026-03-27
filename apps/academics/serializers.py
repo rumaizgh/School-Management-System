@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Batch,Fee
+from .models import Batch,Fee,TimeTable
 
 class BatchSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,3 +19,10 @@ class FeeSerializer(serializers.ModelSerializer):
         fee.save()
         fee.refresh_from_db()
         return fee
+    
+class TimeTableSerializer(serializers.ModelSerializer):
+    classs = serializers.StringRelatedField(source='teacher.classs', read_only=True, many=True)
+    subject = serializers.StringRelatedField(source='teacher.subjects', many=True)
+    class Meta:
+        model = TimeTable
+        fields = '__all__'
