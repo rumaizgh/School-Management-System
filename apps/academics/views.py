@@ -14,19 +14,13 @@ from apps.academics.models import TimeTable
 
 class CreateClass(APIView):
     permission_classes=[IsAdmin]    
-class TimeTablesView(APIView):
-    def get(self, request):
-        timetables = TimeTable.objects.all().order_by("day", "start_time")
-        serializer = TimeTableSerializer(timetables, many=True)
-        return Response(serializer.data)
-    
 
     def post(self,request):
         serializer=BatchSerializer(data = request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors)
+            return Response(serializer.data,  status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def get(self,request,id=None):
         if id:
@@ -79,3 +73,22 @@ class TimeTablesView(APIView):
         serializer = TimeTableSerializer(timetables, many=True)
         return Response(serializer.data)
     
+    def post(self, request):
+        serializer = TimeTableSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data,  status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, id):
+        timetable=get_object_or_404(TimeTable,id=id)
+        serializer = TimeTableSerializer(timetable, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self,request,id):
+        timetable = get_object_or_404(TimeTable,id=id)
+        timetable.delete()
+        return Response({"message": "TimeTable deleted successfully"}, status=status.HTTP_204_NO_CONTENT)

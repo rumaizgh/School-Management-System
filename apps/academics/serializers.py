@@ -21,8 +21,18 @@ class FeeSerializer(serializers.ModelSerializer):
         return fee
     
 class TimeTableSerializer(serializers.ModelSerializer):
-    classs = serializers.StringRelatedField(source='teacher.classs', read_only=True, many=True)
-    subject = serializers.StringRelatedField(source='teacher.subjects', many=True)
+    teacher_name = serializers.CharField(source='teacher.name', read_only=True)
+    subject_name = serializers.CharField(source='subject.subject_name', read_only=True)
+    classs_name = serializers.CharField(source='classs.classs', read_only=True)
     class Meta:
         model = TimeTable
-        fields = '__all__'
+        fields = [
+            'id',
+            'teacher', 'teacher_name',
+            'subject', 'subject_name',
+            'classs', 'classs_name',
+            'date',
+            'day',
+            'start_time',
+            'end_time',
+        ]
