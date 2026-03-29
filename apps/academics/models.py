@@ -1,10 +1,7 @@
 from datetime import timezone
 from django.db import models
 from django.utils import timezone
-from multiselectfield import MultiSelectField
 from apps.account.models import UserData
-
-
 
 class Batch(models.Model):
 
@@ -75,11 +72,11 @@ class TimeTable(models.Model):
         ('sun', 'Sunday')
     ]
 
+    teacher = models.ForeignKey(UserData, limit_choices_to={'user_type': 'teacher'}, on_delete=models.CASCADE)
     classs = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
-    teacher = models.ForeignKey(UserData, limit_choices_to={'user_type': 'teacher'}, on_delete=models.CASCADE)
     date = models.DateField(default=timezone.localdate)
-    day = MultiSelectField(choices=DAY_CHOICES)
+    day = models.CharField(max_length=3, choices=DAY_CHOICES)
     start_time = models.TimeField()
     end_time = models.TimeField()
 
