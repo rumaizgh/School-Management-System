@@ -1,7 +1,8 @@
 from datetime import timezone
 from django.db import models
 from django.utils import timezone
-
+from multiselectfield import MultiSelectField
+from apps.account.models import UserData
 
 class Batch(models.Model):
 
@@ -24,37 +25,58 @@ class Batch(models.Model):
         return f"{self.classs}{f' ({self.year})' if self.year else ''}"
  
 class Fee(models.Model):
-    student = models.ForeignKey(
-        'account.UserData', 
-        limit_choices_to={'user_type': 'student'}, 
-        on_delete=models.CASCADE
-    )
+    student = models.ForeignKey('account.UserData', on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     due_date = models.DateField()
-    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    balance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    paid = models.BooleanField(default=False)
-    paid_on = models.DateField(blank=True, null=True)
+
+    def total_paid(self):
+        return sum(p.amount for p in self.payments.all())
+
+    def balance(self):
+        return self.amount - self.total_paid()
+
+    def is_paid(self):
+        return self.total_paid() >= self.amount
     
-    def save(self, *args, **kwargs):
-        # If instance already exists, add to the existing paid_amount
-        if self.pk:
-            prev = Fee.objects.get(pk=self.pk)
-            # If paid_amount is being updated (not initial assignment)
-            if self.paid_amount != prev.paid_amount:
-                self.paid_amount = prev.paid_amount + self.paid_amount
+class Payment(models.Model):
+    fee = models.ForeignKey(Fee, related_name='payments', on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    paid_on = models.DateField(auto_now_add=True)
+    
+class TimeTable(models.Model):
 
-        # Always calculate balance
-        self.balance_amount = self.amount - self.paid_amount
+    DAY_CHOICES = [
+        ('mon', 'Monday'),
+        ('tue', 'Tuesday'),
+        ('wed', 'Wednesday'),
+        ('thu', 'Thursday'),
+        ('fri', 'Friday'),
+        ('sat', 'Saturday'),
+        ('sun', 'Sunday')
+    ]
 
-        if self.paid_amount >= self.amount:
-            self.paid = True
-            self.balance_amount = 0
-            if not self.paid_on:
-                self.paid_on = timezone.now().date()
-        else:
-            self.paid = False
-            self.paid_on = None
+    classs = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
+    subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
+    teacher = models.ForeignKey(UserData, limit_choices_to={'user_type': 'teacher'}, on_delete=models.CASCADE)
+    date = models.DateField(default=timezone.localdate)
+    day = MultiSelectField(choices=DAY_CHOICES)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
 
-        super().save(*args, **kwargs)
+    # class Meta:
+    #     constraints = [
+    #         models.UniqueConstraint(
+    #             fields=['teacher', 'day', 'start_time'],
+    #             name='unique_teacher_schedule'
+    #         ),
+    #         models.UniqueConstraint(
+    #             fields=['batch', 'day', 'start_time'],
+    #             name='unique_batch_schedule'
+    #         ),
+    #     ]
+
+    #     ordering = ['day', 'start_time']
+
+    def __str__(self):
+        return f"{self.start_time} - {self.end_time}"

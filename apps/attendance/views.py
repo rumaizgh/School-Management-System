@@ -11,9 +11,7 @@ from .serializers import (
 from rest_framework.response import Response
 from apps.account.models import UserData
 from apps.account.serializers import UserDataSerializer
-from apps.subject.serializers import SubjectSerializer
 from apps.academics.models import Batch
-from apps.academics.serializers import BatchSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.db import transaction
@@ -149,4 +147,3 @@ class TeacherStudentAttendanceView(APIView):
         records = AttendanceRecord.objects.filter(student=student,session__teacher=request.user,session__classs=classs_id)
         serializer = AttendanceRecordStudentSerializer(records, many=True)
         return Response(serializer.data)
-    

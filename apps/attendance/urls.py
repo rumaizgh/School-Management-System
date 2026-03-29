@@ -16,4 +16,5 @@ urlpatterns = [
     path('showatdrec/<int:id>/', AttendanceRecordView.as_view(), name='showatdrec'),
     path('studentatdrecord/', StudentAttendanceView.as_view(), name='studentatdrecord'),
     path('attendance/student/<int:id>/', TeacherStudentAttendanceView.as_view()),
+
 ]

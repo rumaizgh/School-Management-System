@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Batch,Fee
+from .models import Batch,Fee,TimeTable,Payment
 
 class BatchSerializer(serializers.ModelSerializer):
     class Meta:
@@ -7,15 +7,28 @@ class BatchSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class FeeSerializer(serializers.ModelSerializer):
+    balance = serializers.SerializerMethodField()
+    total_paid = serializers.SerializerMethodField()
+
     class Meta:
         model = Fee
-        fields = ['id', 'student', 'amount', 'due_date', 'batch', 'paid_amount','balance_amount', 'paid', 'paid_on']
-        read_only_fields = ['batch', 'paid', 'paid_on','balance_amount']
+        fields = '__all__'  
 
-    def create(self, validated_data):
-        student = validated_data['student']
-        validated_data['batch'] = student.batch
-        fee = Fee(**validated_data)
-        fee.save()
-        fee.refresh_from_db()
-        return fee
+    def get_balance(self, obj):
+        return obj.balance()
+
+    def get_total_paid(self, obj):
+        return obj.total_paid()
+    
+class TimeTableSerializer(serializers.ModelSerializer):
+    classs = serializers.StringRelatedField(source='teacher.classs', read_only=True, many=True)
+    subject = serializers.StringRelatedField(source='teacher.subjects', many=True)
+    class Meta:
+        model = TimeTable
+        fields = '__all__'
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = '__all__'
+    

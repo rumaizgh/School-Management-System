@@ -39,10 +39,8 @@ class UserData(AbstractUser):
     user_type = models.CharField(max_length=10, choices=CHOICES)
     name = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(unique = True, blank=True, null=True)
-    classs = models.ForeignKey(
+    classs = models.ManyToManyField(
         'academics.Batch',
-        on_delete=models.SET_NULL,
-        null=True,
         blank=True,
         related_name="students_in_batch"
     )
