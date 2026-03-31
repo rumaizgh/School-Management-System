@@ -44,13 +44,6 @@ class UserData(AbstractUser):
         blank=True,
         related_name="students_in_batch"
     )
-    batch = models.ForeignKey(
-        'academics.Batch',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="students_in_class"
-    )
     phone = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
