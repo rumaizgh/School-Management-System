@@ -6,35 +6,36 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from apps.academics.models import Batch
+from apps.subject.models import Subject
 from .serializers import UserDataSerializer, UserCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import UserData
 from apps.academics.permissions import IsStudentOrAdmin,IsTeacherOrAdmin
 from rest_framework.generics import ListAPIView
 from .pagination import CustomPagination
+from django.db.models import Count, Q
 
+class DashboardCountAPI(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        user_counts = UserData.objects.aggregate(
+            total_students=Count('id', filter=Q(user_type='student', is_active=True)),
+            total_teachers=Count('id', filter=Q(user_type='teacher', is_active=True)),
+        )
 
-# class UserDataViewSet(viewsets.ModelViewSet):
-#     queryset = UserData.objects.all()
-#     serializer_class = UserDataSerializer
-#     permission_classes = [IsAdmin]
+        class_count = Batch.objects.count()
+        subject_count = Subject.objects.count()
 
-# class UserDataView(APIView):
-#     def post(self, request):
-#         serializer = UserDataSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=201)
-#         return Response(serializer.errors, status=400)
-
-#     def patch(self,request,id):
-#         objects = UserData.objects.get(id = id)
-#         serializer = UserDataSerializer(objects, data = request.data, partial = True)
-#         if (serializer.is_valid()):
-#             serializer.save()
-#             return Response(serializer.data)
-#         return Response(serializer.errors)
+        return Response({
+            "status": True,
+            "data": {
+                "students": user_counts['total_students'],
+                "teachers": user_counts['total_teachers'],
+                "classes": class_count,
+                "subjects": subject_count
+            }
+        })
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
