@@ -10,6 +10,9 @@ from .serializers import UserDataSerializer, UserCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import UserData
 from apps.academics.permissions import IsStudentOrAdmin,IsTeacherOrAdmin
+from rest_framework.generics import ListAPIView
+from .pagination import CustomPagination
+
 
 
 # class UserDataViewSet(viewsets.ModelViewSet):
@@ -72,19 +75,13 @@ class ViewAllTeachers(APIView):
         serializer = UserDataSerializer(teachers, many = True)
         return Response(serializer.data)
     
-class ViewAllStudents(APIView):
-    permission_classes = [AllowAny]
+class ViewAllStudents(ListAPIView):
+    serializer_class = UserDataSerializer
+    pagination_class = CustomPagination
 
-    def get(self, request, id=None):
-        if id:
-            students = UserData.objects.filter(user_type='student', id = id , is_active = True)
-            serializer = UserDataSerializer(students, many=True)
-            return Response(serializer.data)
-        
-        students = UserData.objects.filter(user_type='student', is_active = True)
-        serializer = UserDataSerializer(students, many = True)
-        return Response(serializer.data)
-        
+    def get_queryset(self):
+        return UserData.objects.filter(user_type='student', is_active=True)
+    
 class CreateStudent(APIView):
     permission_classes = [IsAuthenticated,IsStudentOrAdmin]
 
