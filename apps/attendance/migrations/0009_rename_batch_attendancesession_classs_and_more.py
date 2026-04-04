@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.RenameField(
             model_name='attendancesession',
             old_name='batch',
-            new_name='batch',
+            new_name='classs',
         ),
         migrations.AlterField(
             model_name='attendancesession',

@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('academics', '0013_alter_batch_year'),
-        ('account', '0006_rename_batch_userdata_batch_and_more'),
+        ('account', '0006_rename_batch_userdata_classs_and_more'),
     ]
 
     operations = [
@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name='userdata',
-            name='batch',
+            name='classs',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='students_in_batch', to='academics.batch'),
         ),
     ]

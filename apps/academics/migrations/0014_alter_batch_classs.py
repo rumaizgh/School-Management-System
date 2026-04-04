@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AlterField(
             model_name='batch',
-            name='batch',
+            name='classs',
             field=models.CharField(blank=True, choices=[('1 std', '1 std'), ('2 std', '2 std'), ('3 std', '3 std'), ('4 std', '4 std'), ('5 std', '5 std'), ('6 std', '6 std'), ('7 std', '7 std'), ('8 std', '8 std'), ('9 std', '9 std'), ('10 std', '10 std'), ('11 std', '11 std'), ('12 std', '12 std'), ('+1 std', '+1 std'), ('+2 std', '+2 std')], max_length=10, null=True),
         ),
     ]

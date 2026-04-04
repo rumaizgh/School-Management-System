@@ -49,21 +49,21 @@ class ViewAllClassTeacher(APIView):
     permission_classes=[IsTeacher]
     def get(self,request,id=None):
         teacher = request.user
-        batch = Batch.objects.filter(subjects__teacher=teacher).distinct()
-        serializer = BatchSerializer(batch,many=True)
+        classs = Batch.objects.filter(subjects__teacher=teacher).distinct()
+        serializer = BatchSerializer(classs,many=True)
         return Response(serializer.data)
     
 class ViewStudentsByClass(APIView):
     def get(self, request, id):
-        batch = get_object_or_404(Batch,id=id)
-        students = UserData.objects.filter(batch=batch, user_type="student", is_active = True)
+        classs = get_object_or_404(Batch,id=id)
+        students = UserData.objects.filter(classs=classs, user_type="student", is_active = True)
         serializer = UserDataSerializer(students, many=True)
         return Response(serializer.data)
     
 class ViewTeachersByClass(APIView):
     def get(self, request, id):
-        batch = get_object_or_404(Batch,id=id)
-        teachers = UserData.objects.filter(batch=batch, user_type="teacher", is_active = True)
+        classs = get_object_or_404(Batch,id=id)
+        teachers = UserData.objects.filter(classs=classs, user_type="teacher", is_active = True)
         serializer = UserDataSerializer(teachers, many=True)
         return Response(serializer.data)
      

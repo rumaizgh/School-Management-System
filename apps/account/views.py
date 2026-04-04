@@ -87,7 +87,7 @@ class CreateStudent(APIView):
     permission_classes = [IsAuthenticated,IsStudentOrAdmin]
 
     def get(self,request):
-        batches = Batch.objects.values('id','batch').distinct()
+        batches = Batch.objects.values('id','classs').distinct()
         batches_data = list(batches)
         
         return Response({

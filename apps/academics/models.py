@@ -5,7 +5,7 @@ from apps.account.models import UserData
 
 class Batch(models.Model):
 
-    batch = models.CharField(max_length=10)
+    classs = models.CharField(max_length=10)
 
     YEAR_CHOICES = [
         (f"{y}-{str(y+1)[-2:]}", f"{y}-{str(y+1)[-2:]}")
@@ -18,10 +18,10 @@ class Batch(models.Model):
     )
 
     class Meta:
-        unique_together = ['batch', 'year']
+        unique_together = ['classs', 'year']
 
     def __str__(self):
-        return f"{self.batch}{f' ({self.year})' if self.year else ''}"
+        return f"{self.classs}{f' ({self.year})' if self.year else ''}"
  
 class Fee(models.Model):
     student = models.ForeignKey('account.UserData', on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
@@ -56,7 +56,7 @@ class TimeTable(models.Model):
     ]
 
     teacher = models.ForeignKey(UserData, limit_choices_to={'user_type': 'teacher'}, on_delete=models.CASCADE)
-    batch = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
+    classs = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
     date = models.DateField(default=timezone.localdate)
     day = models.CharField(max_length=3, choices=DAY_CHOICES)

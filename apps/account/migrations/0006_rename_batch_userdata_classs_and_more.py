@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.RenameField(
             model_name='userdata',
             old_name='batch',
-            new_name='batch',
+            new_name='classs',
         ),
         migrations.AlterField(
             model_name='userdata',
