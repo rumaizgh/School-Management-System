@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('academics', '0015_alter_batch_classs'),
+        ('academics', '0015_alter_batch_batch'),
     ]
 
     operations = [
@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name='batch',
-            name='classs',
+            name='batch',
             field=models.CharField(blank=True, max_length=10, null=True),
         ),
     ]

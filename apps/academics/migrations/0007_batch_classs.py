@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='batch',
-            name='classs',
+            name='batch',
             field=models.CharField(blank=True, max_length=10, null=True),
         ),
     ]

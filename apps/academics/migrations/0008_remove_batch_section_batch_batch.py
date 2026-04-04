@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('academics', '0007_batch_classs'),
+        ('academics', '0007_batch_batch'),
     ]
 
     operations = [

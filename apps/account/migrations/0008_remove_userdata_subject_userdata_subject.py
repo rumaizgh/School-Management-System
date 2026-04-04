@@ -6,8 +6,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('account', '0007_userdata_batch_alter_userdata_classs'),
-        ('subject', '0003_rename_batch_subject_classs'),
+        ('account', '0007_userdata_batch_alter_userdata_batch'),
+        ('subject', '0003_rename_batch_subject_batch'),
     ]
 
     operations = [

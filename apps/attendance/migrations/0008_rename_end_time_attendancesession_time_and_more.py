@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('academics', '0015_alter_batch_classs'),
+        ('academics', '0015_alter_batch_batch'),
         ('attendance', '0007_attendancesession_end_time_and_more'),
     ]
 

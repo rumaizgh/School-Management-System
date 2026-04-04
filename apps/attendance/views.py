@@ -40,7 +40,7 @@ class AttendanceSessionCreate(APIView):
         # Get batches of this teacher
         batches = (
             Batch.objects.filter(subjects__teacher=teacher)
-            .values("id", "classs")
+            .values("id", "batch")
             .distinct()
         )
         batches_data = list(batches)
@@ -85,8 +85,8 @@ class ViewAttendanceSessions(APIView):
 class AttendanceStudentsList(APIView):
     def get(self, request, id):
         session = AttendanceSession.objects.get(id=id)
-        classs = session.classs
-        students = UserData.objects.filter(classs=classs, user_type="student", is_active = True)
+        batch = session.batch
+        students = UserData.objects.filter(batch=batch, user_type="student", is_active = True)
         serializer = UserDataSerializer(students, many=True)
         return Response(serializer.data)
 
@@ -143,7 +143,7 @@ class StudentAttendanceView(APIView):
 class TeacherStudentAttendanceView(APIView):
     def get(self,request,id):
         student=get_object_or_404(UserData,id=id,user_type="student")
-        classs_id = request.GET.get("class")
-        records = AttendanceRecord.objects.filter(student=student,session__teacher=request.user,session__classs=classs_id)
+        batch_id = request.GET.get("class")
+        records = AttendanceRecord.objects.filter(student=student,session__teacher=request.user,session__batch=batch_id)
         serializer = AttendanceRecordStudentSerializer(records, many=True)
         return Response(serializer.data)

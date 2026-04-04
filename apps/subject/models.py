@@ -13,7 +13,7 @@ class Subject(models.Model):
         limit_choices_to={'user_type': 'teacher'},
         related_name='subjects'
     )
-    classs = models.ForeignKey(
+    batch = models.ForeignKey(
         Batch,
         on_delete=models.CASCADE,
         null=True,

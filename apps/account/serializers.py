@@ -12,7 +12,7 @@ class UserDataSerializer(serializers.ModelSerializer):
         source='subjects',
         required=False
     )
-    class_name = serializers.CharField(source='classs.classs', read_only=True)
+    class_name = serializers.CharField(source='batch.batch', read_only=True)
 
     class Meta:
         model = UserData
@@ -55,7 +55,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "name",
             "email",
             "password",
-            "classs",
+            "batch",
             "phone",
         )
         extra_kwargs = {

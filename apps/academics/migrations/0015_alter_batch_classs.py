@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('academics', '0014_alter_batch_classs'),
+        ('academics', '0014_alter_batch_batch'),
     ]
 
     operations = [
         migrations.AlterField(
             model_name='batch',
-            name='classs',
+            name='batch',
             field=models.CharField(blank=True, choices=[('1 std', '1 std'), ('2 std', '2 std'), ('3 std', '3 std'), ('4 std', '4 std'), ('5 std', '5 std'), ('6 std', '6 std'), ('7 std', '7 std'), ('8 std', '8 std'), ('9 std', '9 std'), ('10 std', '10 std'), ('+1 std', '+1 std'), ('+2 std', '+2 std')], max_length=10, null=True),
         ),
     ]
