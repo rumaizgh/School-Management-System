@@ -68,8 +68,41 @@ class ViewTeachersByClass(APIView):
         return Response(serializer.data)
      
 class TimeTablesView(APIView):
-    def get(self, request):
-        timetables = TimeTable.objects.all().order_by("day", "start_time")
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id=None):
+        user = request.user
+
+        if id:
+            user = get_object_or_404(UserData, id=id)
+
+            if user.user_type == 'teacher':
+                if not user.is_active:
+                    return Response(
+                        {"error": "Teacher account is inactive."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                timetables = TimeTable.objects.filter(teacher=user)
+
+            elif user.user_type == 'student':
+                if not user.is_active:
+                    return Response(
+                        {"error": "Student account is inactive."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                student_classes = user.classs.all()
+
+                if not student_classes.exists():
+                    return Response(
+                        {"error": "No class assigned to this student."},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+                timetables = TimeTable.objects.filter(classs__in=student_classes)
+
+            else:
+                timetables = TimeTable.objects.all()
+
         serializer = TimeTableSerializer(timetables, many=True)
         return Response(serializer.data)
     
