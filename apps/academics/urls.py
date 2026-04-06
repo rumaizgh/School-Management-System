@@ -13,7 +13,6 @@ urlpatterns = [
     path('payments/', PaymentListCreateAPIView.as_view()),
     path('fee/', FeeListCreateAPIView.as_view()),
     path('fee/<int:id>/', FeeListCreateAPIView.as_view()),
-    path('timetables/', TimeTablesView.as_view(), name='viewalltimetable'),
     path('timetables/', TimeTablesView.as_view(), name='createtimetable'),
     path('timetables/<int:id>/', TimeTablesView.as_view(), name='updatetimetable'),
     path('timetables/<int:id>/', TimeTablesView.as_view(), name='deletetimetable'),
