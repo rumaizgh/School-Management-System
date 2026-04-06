@@ -8,9 +8,10 @@ from django.contrib.auth import authenticate
 from apps.academics.models import Batch
 from apps.subject.models import Subject
 from .serializers import UserDataSerializer, UserCreateSerializer
+from apps.academics.serializers import BatchSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import UserData
-from apps.academics.permissions import IsStudentOrAdmin,IsTeacherOrAdmin
+from apps.academics.permissions import IsAdmin,IsTeacherOrAdmin
 from rest_framework.generics import ListAPIView
 from .pagination import CustomPagination
 from django.db.models import Count, Q
@@ -84,20 +85,17 @@ class ViewAllStudents(ListAPIView):
         return UserData.objects.filter(user_type='student', is_active=True)
     
 class CreateStudent(APIView):
-    permission_classes = [IsAuthenticated,IsStudentOrAdmin]
+    permission_classes = [IsAuthenticated,IsAdmin]
 
     def get(self,request):
-        batches = Batch.objects.values('id','classs').distinct()
-        batches_data = list(batches)
-        
-        return Response({
-            "batches": batches_data
-        })
+        batches = Batch.objects.all()
+        serializer = BatchSerializer(batches, many=True)
+        return Response({"batches": serializer.data})
 
     def post(self,request):
         serializer = UserCreateSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(user_type="student")
+            serializer.save()
             return Response(serializer.data,  status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
     
@@ -112,7 +110,7 @@ class CreateStudent(APIView):
 
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors)
     
@@ -134,7 +132,7 @@ class CreateStudent(APIView):
         )
     
 class CreateTeacher(APIView):
-    permission_classes = [IsAuthenticated,IsTeacherOrAdmin]
+    permission_classes = [IsAuthenticated,IsAdmin]
     
     def post(self,request):
         serializer = UserCreateSerializer(data=request.data)
