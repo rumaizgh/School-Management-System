@@ -2,14 +2,21 @@ from django.db import models
 from apps.account.models import UserData
 from apps.subject.models import Subject
 from django.utils import timezone
-from apps.academics.models import Batch
+from apps.academics.models import Batch, TimeTable
 
 class AttendanceSession(models.Model):
     teacher = models.ForeignKey(UserData, limit_choices_to={'user_type': 'teacher'}, on_delete=models.CASCADE)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, null=True, blank=True)
     classs = models.ForeignKey(Batch,  on_delete=models.CASCADE)
+    timetable = models.ForeignKey(
+        TimeTable,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sessions"
+    )
     date = models.DateField(default=timezone.localdate)
-    time = models.CharField(max_length=10, null= True)
+    time = models.TimeField()
 
     def __str__(self):
         return f"{self.subject} - {self.date}"
