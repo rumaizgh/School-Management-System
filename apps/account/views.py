@@ -65,17 +65,18 @@ class LoginView(APIView):
             'access': str(refresh.access_token)
         })
 
-class ViewAllTeachers(APIView):
-    permission_classes = [AllowAny]
+class ViewAllTeachers(ListAPIView):
+    serializer_class = UserDataSerializer
+    pagination_class = CustomPagination
 
-    def get(self,request, id=None):
+    def get_queryset(self):
+        queryset = UserData.objects.filter(user_type='teacher', is_active=True)
+
+        id = self.kwargs.get('id')
         if id:
-            teachers = UserData.objects.filter(user_type='teacher',id = id, is_active = True)
-            serializer = UserDataSerializer(teachers, many = True)
-            return Response(serializer.data)
-        teachers = UserData.objects.filter(user_type = 'teacher', is_active = True)
-        serializer = UserDataSerializer(teachers, many = True)
-        return Response(serializer.data)
+            queryset = queryset.filter(id=id)
+
+        return queryset
     
 class ViewAllStudents(ListAPIView):
     serializer_class = UserDataSerializer
