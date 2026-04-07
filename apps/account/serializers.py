@@ -75,7 +75,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         classs_data = validated_data.pop("classs", [])
-        validated_data["user_type"] = "student"
 
         user = UserData.objects.create_user(**validated_data)
         user.classs.set(classs_data)

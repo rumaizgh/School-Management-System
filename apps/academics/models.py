@@ -1,7 +1,6 @@
 from datetime import timezone
 from django.db import models
 from django.utils import timezone
-from apps.account.models import UserData
 
 class Batch(models.Model):
 
@@ -55,7 +54,12 @@ class TimeTable(models.Model):
         ('sun', 'Sunday')
     ]
 
-    teacher = models.ForeignKey(UserData, limit_choices_to={'user_type': 'teacher'}, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(
+    "account.UserData",
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True
+    )
     classs = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
     date = models.DateField(default=timezone.localdate)
