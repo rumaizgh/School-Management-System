@@ -8,5 +8,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('addsubject/', AddSubject.as_view(), name='addsubject'),
     path('viewsubject/', ViewSubject.as_view(), name='viewsubject'),
-    path('viewsubject/<int:id>/', ViewSubject.as_view(), name='viewsubject')
+    path('viewsubject/<int:id>/', ViewSubject.as_view(), name='viewsubject'),
+    path('editsubject/<int:id>/', AddSubject.as_view(), name='viewsubject')
+
 ]
