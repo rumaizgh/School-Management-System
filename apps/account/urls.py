@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import LoginView,ViewAllTeachers, ViewAllStudents, CreateStudent, CreateTeacher,DashboardCountAPI, SearchStudent
+from .views import LoginView,ViewAllTeachers, ViewAllStudents, CreateStudent, CreateTeacher,DashboardCountAPI, SearchStudent, SearchTeacher
 
 router = DefaultRouter()
 # router.register(r'users', UserDataViewSet)
@@ -30,5 +30,7 @@ urlpatterns = [
 
     path('getcount/',DashboardCountAPI.as_view(), name='getcount'),
 
-    path('search/student/', SearchStudent.as_view())
+    path('search/student/', SearchStudent.as_view()),
+    path('search/teacher/', SearchTeacher.as_view())
+
 ]

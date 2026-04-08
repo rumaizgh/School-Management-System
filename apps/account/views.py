@@ -188,3 +188,18 @@ class SearchStudent(APIView):
 
         serializer = UserDataSerializer(students, many=True)
         return Response(serializer.data)
+    
+class SearchTeacher(APIView):
+    def get(self, request):
+        query = request.GET.get("q", "")
+
+        students = UserData.objects.filter(
+            user_type="teacher"
+        ).filter(
+            Q(name__icontains=query) |
+            Q(email__icontains=query) |
+            Q(phone__icontains=query)
+        )
+
+        serializer = UserDataSerializer(students, many=True)
+        return Response(serializer.data)
