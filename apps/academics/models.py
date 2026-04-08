@@ -67,19 +67,5 @@ class TimeTable(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
 
-    # class Meta:
-    #     constraints = [
-    #         models.UniqueConstraint(
-    #             fields=['teacher', 'day', 'start_time'],
-    #             name='unique_teacher_schedule'
-    #         ),
-    #         models.UniqueConstraint(
-    #             fields=['batch', 'day', 'start_time'],
-    #             name='unique_batch_schedule'
-    #         ),
-    #     ]
-
-    #     ordering = ['day', 'start_time']
-
     def __str__(self):
         return f"{self.start_time} - {self.end_time}"

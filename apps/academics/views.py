@@ -180,3 +180,15 @@ class FeeListCreateAPIView(APIView):
 
         return Response(serializer.errors, status=400)
     
+class ViewFee(APIView):
+    def get(self, request, classs_id):
+        fees = Fee.objects.filter(batch=classs_id)
+
+        if not fees.exists():
+            return Response(
+                {"message": "No fees found for this class"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = FeeSerializer(fees, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
