@@ -18,6 +18,8 @@ urlpatterns = [
     path('timetables/<int:id>/', TimeTablesView.as_view(), name='updatetimetable'),
     path('timetables/<int:id>/', TimeTablesView.as_view(), name='deletetimetable'),
     path('timetables/<int:id>/', TimeTablesView.as_view(), name='viewonlyassignedteacherTT&studentcls'),
-    path('payment/', CreatePayment.as_view(), name='createpayment')
+    path('payment/', CreatePayment.as_view(), name='createpayment'),
+    path('payment/<int:student_id>/', CreatePayment.as_view(), name='getpayment')
+
 
 ]

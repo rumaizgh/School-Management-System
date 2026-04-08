@@ -202,9 +202,15 @@ class ViewFee(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class CreatePayment(APIView):
-    def get(self, request , id=None):
-        payment = Payment.objects.all().order_by("-id")
-        serializer = PaymentSerializer(payment, many=True)
+    def get(self, request, student_id=None):
+        if student_id:
+            payments = Payment.objects.filter(
+                fee__student_id=student_id
+            ).order_by("-id")
+        else:
+            payments = Payment.objects.all().order_by("-id")
+
+        serializer = PaymentSerializer(payments, many=True)
         return Response(serializer.data)
     
     def post(self, request):
