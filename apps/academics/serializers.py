@@ -39,8 +39,16 @@ class TimeTableSerializer(serializers.ModelSerializer):
         ]
 
 class PaymentSerializer(serializers.ModelSerializer):
+    balance = serializers.SerializerMethodField()
+    total_paid = serializers.SerializerMethodField()
     class Meta:
         model = Payment
         fields = '__all__'
+
+    def get_balance(self, obj):
+        return obj.fee.balance()
+
+    def get_total_paid(self, obj):
+        return obj.fee.total_paid()
     
         

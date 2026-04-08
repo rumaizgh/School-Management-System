@@ -200,3 +200,27 @@ class ViewFee(APIView):
 
         serializer = FeeSerializer(fees, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class CreatePayment(APIView):
+    def get(self, request , id=None):
+        payment = Payment.objects.all().order_by("-id")
+        serializer = PaymentSerializer(payment, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        serializer = PaymentSerializer(data=request.data)
+
+        if serializer.is_valid():
+            fee = serializer.validated_data['fee']
+            amount = serializer.validated_data['amount']
+
+            if amount > fee.balance():
+                return Response(
+                    {"error": "Amount exceeds remaining balance"},
+                    status=400
+                )
+
+            serializer.save()
+            return Response(serializer.data, status=201)
+
+        return Response(serializer.errors, status=400)

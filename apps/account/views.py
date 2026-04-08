@@ -173,3 +173,18 @@ class CreateTeacher(APIView):
             {"message": "Student deactivated successfully"},
             status=status.HTTP_200_OK
         )
+    
+class SearchStudent(APIView):
+    def get(self, request):
+        query = request.GET.get("q", "")
+
+        students = UserData.objects.filter(
+            user_type="student"
+        ).filter(
+            Q(name__icontains=query) |
+            Q(email__icontains=query) |
+            Q(phone__icontains=query)
+        )
+
+        serializer = UserDataSerializer(students, many=True)
+        return Response(serializer.data)
