@@ -180,6 +180,14 @@ class FeeListCreateAPIView(APIView):
 
         return Response(serializer.errors, status=400)
     
+    def patch(self, request, id):
+        fee=get_object_or_404(Fee,id=id)
+        serializer = FeeSerializer(fee, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class ViewFee(APIView):
     def get(self, request, classs_id):
         fees = Fee.objects.filter(batch=classs_id)
