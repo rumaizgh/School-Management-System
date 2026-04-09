@@ -230,3 +230,18 @@ class CreatePayment(APIView):
             return Response(serializer.data, status=201)
 
         return Response(serializer.errors, status=400)
+    
+class ViewFeeByStudent(APIView):
+    def get(self, request, student_id=None):
+        if student_id:
+            fees = Fee.objects.filter(
+                student_id=student_id,
+                student__user_type="student"
+            ).order_by("-id")
+
+            serializer = FeeSerializer(fees, many=True)
+            return Response(serializer.data)
+
+        fees = Fee.objects.all().order_by("-id")
+        serializer = FeeSerializer(fees, many=True)
+        return Response(serializer.data)
