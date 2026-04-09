@@ -41,14 +41,18 @@ class TimeTableSerializer(serializers.ModelSerializer):
 class PaymentSerializer(serializers.ModelSerializer):
     balance = serializers.SerializerMethodField()
     total_paid = serializers.SerializerMethodField()
+
     class Meta:
         model = Payment
         fields = '__all__'
 
-    def get_balance(self, obj):
-        return obj.fee.balance()
-
     def get_total_paid(self, obj):
-        return obj.fee.total_paid()
-    
-        
+        payments = Payment.objects.filter(
+            fee=obj.fee,
+            id__lte=obj.id
+        )
+        return sum([float(p.amount) for p in payments])
+
+    def get_balance(self, obj):
+        total_paid = self.get_total_paid(obj)
+        return float(obj.fee.amount) - total_paid
