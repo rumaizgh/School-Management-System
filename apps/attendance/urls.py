@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import AttendanceSessionCreate, AttendanceStudentsList, AttendanceRecordView, ViewAttendanceSessions,StudentAttendanceView,TeacherStudentAttendanceView
+from .views import AttendanceSessionCreate, AttendanceStudentsList, AttendanceRecordView, ViewAttendanceSessions,StudentAttendanceView,TeacherStudentAttendanceView, SearchSession
 
 router = DefaultRouter()
 
@@ -16,5 +16,6 @@ urlpatterns = [
     path('showatdrec/<int:id>/', AttendanceRecordView.as_view(), name='showatdrec'),
     path('studentatdrecord/', StudentAttendanceView.as_view(), name='studentatdrecord'),
     path('attendance/student/<int:id>/', TeacherStudentAttendanceView.as_view()),
+    path('search/session/', SearchSession.as_view()),
 
 ]

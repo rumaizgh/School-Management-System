@@ -16,6 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 
 
 class AttendanceSessionCreate(APIView):
@@ -146,4 +147,25 @@ class TeacherStudentAttendanceView(APIView):
         classs_id = request.GET.get("class")
         records = AttendanceRecord.objects.filter(student=student,session__teacher=request.user,session__classs=classs_id)
         serializer = AttendanceRecordStudentSerializer(records, many=True)
+        return Response(serializer.data)
+
+class SearchSession(APIView):
+    def get(self, request):
+        query = request.GET.get("q", "").strip()
+
+        if not query:
+            return Response({"message": "Enter search value"}, status=400)
+
+        sessions = AttendanceSession.objects.select_related(
+            'teacher', 'subject', 'classs'
+        ).filter(
+            Q(teacher__name__icontains=query) |
+            Q(subject__subject_name__icontains=query) |
+            Q(classs__classs__icontains=query)
+        ).order_by('-date', 'time')
+
+        if not sessions.exists():
+            return Response({"message": "No sessions found"}, status=404)
+
+        serializer = AttendanceSessionSerializer(sessions, many=True)
         return Response(serializer.data)
