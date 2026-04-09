@@ -179,11 +179,11 @@ class SearchStudent(APIView):
         query = request.GET.get("q", "")
 
         students = UserData.objects.filter(
-            user_type="student"
-        ).filter(
             Q(name__icontains=query) |
             Q(email__icontains=query) |
-            Q(phone__icontains=query)
+            Q(phone__icontains=query),
+            user_type="student",
+            is_active=True
         )
 
         serializer = UserDataSerializer(students, many=True)
@@ -193,13 +193,13 @@ class SearchTeacher(APIView):
     def get(self, request):
         query = request.GET.get("q", "")
 
-        students = UserData.objects.filter(
-            user_type="teacher"
-        ).filter(
+        teacher = UserData.objects.filter(
             Q(name__icontains=query) |
             Q(email__icontains=query) |
-            Q(phone__icontains=query)
+            Q(phone__icontains=query),
+            user_type="teacher",
+            is_active=True
         )
 
-        serializer = UserDataSerializer(students, many=True)
+        serializer = UserDataSerializer(teacher, many=True)
         return Response(serializer.data)
