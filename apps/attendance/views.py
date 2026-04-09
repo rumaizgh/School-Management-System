@@ -17,6 +17,7 @@ from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
+from apps.account.pagination import CustomPagination
 
 
 class AttendanceSessionCreate(APIView):
@@ -52,15 +53,18 @@ class AttendanceSessionCreate(APIView):
 class ViewAttendanceSessions(APIView):
     def get(self, request, id=None):
         if id:
-            teacher = UserData.objects.get(id=id, user_type="teacher")
-            records = AttendanceSession.objects.filter(teacher=teacher).order_by(
-                "-date"
-            )
-            serializer = AttendanceSessionSerializer(records, many=True)
-            return Response(serializer.data)
-        records = AttendanceSession.objects.all().order_by("-date")
-        serializer = AttendanceSessionSerializer(records, many=True)
-        return Response(serializer.data)
+            teacher = get_object_or_404(UserData, id=id, user_type="teacher")
+            records = AttendanceSession.objects.filter(
+                teacher=teacher
+            ).order_by("-date")
+        else:
+            records = AttendanceSession.objects.all().order_by("-date")
+
+        paginator = CustomPagination()
+        paginated_records = paginator.paginate_queryset(records, request)
+
+        serializer = AttendanceSessionSerializer(paginated_records, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def delete(self, request, id):
         session = get_object_or_404(AttendanceSession, id=id)
