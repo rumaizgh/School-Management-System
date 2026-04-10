@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from .models import AttendanceSession, AttendanceRecord
@@ -137,7 +138,12 @@ class StudentAttendanceView(APIView):
     def get(self, request):
         status = request.GET.get("status")
 
-        records = AttendanceRecord.objects.filter(student=request.user)
+        today = timezone.localdate()
+
+        records = AttendanceRecord.objects.filter(
+            student=request.user,
+            session__date=today
+        )
 
         if status:
             records = records.filter(status=status)
