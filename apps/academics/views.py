@@ -15,6 +15,7 @@ from apps.subject.models import Subject
 from .resources import FeeResource
 from django.http import HttpResponse
 from django.db.models import Count, Q, Sum
+from apps.account.pagination import CustomPagination
 
 
 class CreateClass(APIView):
@@ -215,8 +216,11 @@ class CreatePayment(APIView):
         else:
             payments = Payment.objects.all().order_by("-id")
 
-        serializer = PaymentSerializer(payments, many=True)
-        return Response(serializer.data)
+        paginator = CustomPagination()
+        paginated_payments = paginator.paginate_queryset(payments, request)
+
+        serializer = PaymentSerializer(paginated_payments, many=True)
+        return paginator.get_paginated_response(serializer.data)
     
     def post(self, request):
         serializer = PaymentSerializer(data=request.data)
