@@ -103,7 +103,7 @@ class CreateStudent(APIView):
     def patch(self, request, id):
         user = get_object_or_404(UserData, id=id, user_type="student")
 
-        serializer = UserDataSerializer(
+        serializer = UserCreateSerializer(
             user,
             data=request.data,
             partial=True
@@ -145,7 +145,7 @@ class CreateTeacher(APIView):
     def patch(self, request, id):
         user = get_object_or_404(UserData, id=id, user_type="teacher")
 
-        serializer = UserDataSerializer(
+        serializer = UserCreateSerializer(
             user,
             data=request.data,
             partial=True

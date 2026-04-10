@@ -48,20 +48,31 @@ class UserDataSerializer(serializers.ModelSerializer):
 
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    subject = serializers.PrimaryKeyRelatedField(
+        queryset=Subject.objects.all(),
+        many=True,
+        required=False
+    )
 
     class Meta:
         model = UserData
-        fields = (
-            "name",
-            "email",
-            "password",
-            "classs",
-            "phone",
-        )
+        fields = "__all__"
         extra_kwargs = {
             "email": {"required": True},
-            "phone" :{"required" : True}
+            "phone" :{"required" : True},
+            "user_type": {"required": False}
         }
+
+    def create(self, validated_data):
+        classs = validated_data.pop("classs", [])
+        subject = validated_data.pop("subject", [])
+
+        user = UserData.objects.create_user(**validated_data)
+
+        user.classs.set(classs)
+        user.subject.set(subject)
+
+        return user
 
     def validate_email(self, value):
         if UserData.objects.filter(email=value).exists():
@@ -72,11 +83,3 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if len(value) < 10:
             raise serializers.ValidationError("Phone number must be at least 10 digits.")
         return value
-
-    def create(self, validated_data):
-        classs_data = validated_data.pop("classs", [])
-
-        user = UserData.objects.create_user(**validated_data)
-        user.classs.set(classs_data)
-
-        return user
