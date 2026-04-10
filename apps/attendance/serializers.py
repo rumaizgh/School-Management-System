@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from apps.academics.models import TimeTable
 from .models import AttendanceSession, AttendanceRecord
 from apps.account.models import UserData
 
@@ -34,8 +35,19 @@ class ViewAttendanceRecordStudentSerializer(serializers.ModelSerializer):
         fields = ['teacher', 'subject', 'date', 'id', 'name', 'status']
 
     def get_subject(self, obj):
-        if obj.session.timetable and obj.session.timetable.subject:
-            return obj.session.timetable.subject.subject_name
-        # if obj.session.subject:
-        #     return obj.session.subject.subject_name
+        session = obj.session
+        day = session.date.strftime('%a').lower()[:3]
+
+        timetable = TimeTable.objects.filter(
+            classs=session.classs,
+            day=day,
+            start_time=session.time
+        ).first()
+
+        if timetable:
+            return timetable.subject.subject_name
+
+        if session.subject:
+            return session.subject.subject_name
+
         return None
