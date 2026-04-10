@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent
+from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee
 from django.urls import path, include
 
 router = DefaultRouter()
@@ -20,7 +20,9 @@ urlpatterns = [
     path('timetables/<int:id>/', TimeTablesView.as_view(), name='deletetimetable'),
     path('timetables/<int:id>/', TimeTablesView.as_view(), name='viewonlyassignedteacherTT&studentcls'),
     path('payment/', CreatePayment.as_view(), name='createpayment'),
-    path('payment/<int:student_id>/', CreatePayment.as_view(), name='getpayment')
+    path('payment/<int:student_id>/', CreatePayment.as_view(), name='getpayment'),
+    path('export-fees/', ExportFee.as_view(), name='export-fees'),
+
 
 
 ]

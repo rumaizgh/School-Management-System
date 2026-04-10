@@ -11,6 +11,9 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from apps.account.models import UserData
 from apps.academics.models import TimeTable
+from .resources import FeeResource
+from django.http import HttpResponse
+
 
 class CreateClass(APIView):
     permission_classes=[IsAdmin]    
@@ -245,3 +248,18 @@ class ViewFeeByStudent(APIView):
         fees = Fee.objects.all().order_by("-id")
         serializer = FeeSerializer(fees, many=True)
         return Response(serializer.data)
+
+class ExportFee(APIView):
+    def get(self, request):
+        fees = Fee.objects.all()
+
+        dataset = FeeResource().export(queryset=fees)
+
+        response = HttpResponse(
+            dataset.export('xlsx'),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+        response['Content-Disposition'] = 'attachment; filename="fees.xlsx"'
+
+        return response
