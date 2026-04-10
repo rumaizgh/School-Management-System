@@ -29,10 +29,11 @@ class ViewAttendanceRecordStudentSerializer(serializers.ModelSerializer):
     teacher = serializers.CharField(source='session.teacher', read_only=True)
     date = serializers.CharField(source='session.date', read_only=True)
     subject = serializers.SerializerMethodField()
+    time = serializers.CharField(source='session.time', read_only = True)
 
     class Meta:
         model = AttendanceRecord
-        fields = ['teacher', 'subject', 'date', 'id', 'name', 'status']
+        fields = ['teacher', 'subject', 'date','time', 'id', 'name', 'status']
 
     def get_subject(self, obj):
         session = obj.session
