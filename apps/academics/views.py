@@ -11,8 +11,10 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from apps.account.models import UserData
 from apps.academics.models import TimeTable
+from apps.subject.models import Subject
 from .resources import FeeResource
 from django.http import HttpResponse
+from django.db.models import Count, Q, Sum
 
 
 class CreateClass(APIView):
@@ -263,3 +265,42 @@ class ExportFee(APIView):
         response['Content-Disposition'] = 'attachment; filename="fees.xlsx"'
 
         return response
+    
+class GetCountsByClass(APIView):
+
+    def get(self, request, id):
+
+        student_count = UserData.objects.filter(
+            user_type='student',
+            is_active=True,
+            classs=id
+        ).count()
+
+        teacher_count = UserData.objects.filter(
+            user_type='teacher',
+            is_active=True,
+            subjects__classs_id=id
+        ).distinct().count()
+
+        total_fee = Fee.objects.filter(
+            batch_id=id
+        ).aggregate(total=Sum('amount'))['total'] or 0
+
+        total_paid = Payment.objects.filter(
+            fee__batch_id=id
+        ).aggregate(total=Sum('amount'))['total'] or 0
+
+        percentage = 0
+        if total_fee > 0:
+            percentage = (total_paid / total_fee) * 100
+
+        return Response({
+            "status": True,
+            "data": {
+                "students": student_count,
+                "teachers": teacher_count,
+                "total_fee": total_fee,
+                "total_paid": total_paid,
+                "percentage_paid": round(percentage, 2)
+            }
+        })
