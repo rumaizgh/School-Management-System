@@ -85,6 +85,8 @@ class TimeTableSerializer(serializers.ModelSerializer):
         ]
 
 class PaymentSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='fee.student.name', read_only=True)
+    classs_name = serializers.CharField(source='fee.batch.classs', read_only=True)
     balance = serializers.SerializerMethodField()
     total_paid = serializers.SerializerMethodField()
 
@@ -93,12 +95,12 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_total_paid(self, obj):
-        payments = Payment.objects.filter(
+        total = Payment.objects.filter(
             fee=obj.fee,
             id__lte=obj.id
-        )
-        return sum([float(p.amount) for p in payments])
+        ).aggregate(total=Sum('amount'))['total']
+        return float(total or 0)
 
     def get_balance(self, obj):
         total_paid = self.get_total_paid(obj)
-        return float(obj.fee.amount) - total_paid
+        return float(obj.fee.amount or 0) - total_paid
