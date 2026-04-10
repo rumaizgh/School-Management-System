@@ -88,6 +88,18 @@ class ViewAttendanceSessions(APIView):
             )
 
 
+class GetSessionsByClass(APIView):
+    def get(self, request, classs_id):
+        records = AttendanceSession.objects.filter(
+            classs_id=classs_id
+        ).order_by("-date")
+
+        paginator = CustomPagination()
+        paginated_records = paginator.paginate_queryset(records, request)
+
+        serializer = AttendanceSessionSerializer(paginated_records, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    
 class AttendanceStudentsList(APIView):
     def get(self, request, id):
         session = AttendanceSession.objects.get(id=id)
