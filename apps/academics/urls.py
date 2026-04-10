@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,GetCountsByClass
+from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee
 from django.urls import path, include
 
 router = DefaultRouter()
@@ -22,7 +22,6 @@ urlpatterns = [
     path('payment/', CreatePayment.as_view(), name='createpayment'),
     path('payment/<int:student_id>/', CreatePayment.as_view(), name='getpayment'),
     path('export-fees/', ExportFee.as_view(), name='export-fees'),
-    path('getcount/classs/<int:id>/', GetCountsByClass.as_view(), name='getcountbyclasss'),
 
 
 
