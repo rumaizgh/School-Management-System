@@ -9,6 +9,7 @@ class BatchSerializer(serializers.ModelSerializer):
     total_fee = serializers.SerializerMethodField()
     total_paid = serializers.SerializerMethodField()
     percentage_paid = serializers.SerializerMethodField()
+    balance = serializers.SerializerMethodField()
 
     class Meta:
         model = Batch
@@ -37,6 +38,11 @@ class BatchSerializer(serializers.ModelSerializer):
         return Payment.objects.filter(
             fee__batch=obj.id
         ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    def get_balance(self, obj):
+        total_fee = self.get_total_fee(obj)
+        total_paid = self.get_total_paid(obj)
+        return total_fee - total_paid
 
     def get_percentage_paid(self, obj):
         total_fee = self.get_total_fee(obj)
