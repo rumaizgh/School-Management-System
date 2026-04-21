@@ -2,7 +2,12 @@ from rest_framework import serializers
 from apps.subject.serializers import SubjectSerializer
 from .models import UserData
 from apps.subject.models import Subject
+from apps.academics.models import Batch
 
+class BatchMinimalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Batch
+        fields = ['id', 'classs']
 class UserDataSerializer(serializers.ModelSerializer):
     subjects = SubjectSerializer(many=True, read_only=True)
     subject_ids = serializers.PrimaryKeyRelatedField(
@@ -12,7 +17,14 @@ class UserDataSerializer(serializers.ModelSerializer):
         source='subjects',
         required=False
     )
-    class_name = serializers.CharField(source='classs.classs', read_only=True)
+    classs = BatchMinimalSerializer(many=True, read_only=True)  # 👈 replaces class_name
+    classs_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Batch.objects.all(),
+        many=True,
+        write_only=True,
+        source='classs',
+        required=False
+    )
 
     class Meta:
         model = UserData
