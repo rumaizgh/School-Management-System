@@ -33,3 +33,16 @@ class AddSubject(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class SubjectsByTeacher(APIView):
+    def get(self, request, teacher_id):
+        subjects = Subject.objects.filter(teacher_id=teacher_id)
+
+        if not subjects.exists():
+            return Response(
+                {"message": "No subjects found for this teacher"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = SubjectSerializer(subjects, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
