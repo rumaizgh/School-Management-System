@@ -12,22 +12,22 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
         model = AttendanceSession
         fields = ['id', 'timetable', 'teacher', 'teacher_name', 'date', 'time',
                   'subject', 'subject_name', 'classs', 'classs_name']
-        read_only_fields = ['teacher', 'subject', 'classs', 'date', 'time']
-
-    def validate_timetable(self, value):
-        if AttendanceSession.objects.filter(timetable=value).exists():
-            raise serializers.ValidationError(
-                "An attendance session already exists for this timetable."
-            )
-        return value
+        extra_kwargs = {
+            'teacher': {'required': False},
+            'subject': {'required': False},
+            'classs': {'required': False},
+            'date': {'required': False},
+            'time': {'required': False},
+        }
 
     def create(self, validated_data):
-        timetable = validated_data['timetable']
-        validated_data['teacher'] = timetable.teacher
-        validated_data['subject'] = timetable.subject
-        validated_data['classs'] = timetable.classs
-        validated_data['date'] = timetable.date
-        validated_data['time'] = timetable.start_time
+        timetable = validated_data.get('timetable')
+        if timetable:
+            validated_data['teacher'] = timetable.teacher
+            validated_data['subject'] = timetable.subject
+            validated_data['classs'] = timetable.classs
+            validated_data['date'] = timetable.date
+            validated_data['time'] = timetable.start_time
         return super().create(validated_data)
      
 class AttendanceRecordSerializer(serializers.ModelSerializer):

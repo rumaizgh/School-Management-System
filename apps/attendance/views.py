@@ -19,25 +19,50 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from apps.account.pagination import CustomPagination
+from apps.academics.models import TimeTable
 
 
 class AttendanceSessionCreate(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = AttendanceSessionSerializer(data=request.data)
-        if serializer.is_valid():
-            timetable = serializer.validated_data.get('timetable')
-            
+        timetable_id = request.data.get('timetable')
+
+        if timetable_id:
+            timetable = get_object_or_404(TimeTable, id=timetable_id)
+
             if timetable.teacher != request.user:
                 return Response(
                     {"error": "You are not authorized to create a session for this timetable."},
                     status=status.HTTP_403_FORBIDDEN
                 )
-            
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            if AttendanceSession.objects.filter(timetable=timetable).exists():
+                return Response(
+                    {"error": "An attendance session already exists for this timetable."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            serializer = AttendanceSessionSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        else:
+            # Check teacher in manual body matches logged-in user
+            teacher_id = request.data.get('teacher')
+            if int(teacher_id) != request.user.id:
+                return Response(
+                    {"error": "You are not authorized to create a session for another teacher."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            serializer = AttendanceSessionSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, id=None):
         if not id:
