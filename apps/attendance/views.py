@@ -27,9 +27,17 @@ class AttendanceSessionCreate(APIView):
     def post(self, request):
         serializer = AttendanceSessionSerializer(data=request.data)
         if serializer.is_valid():
+            timetable = serializer.validated_data.get('timetable')
+            
+            if timetable.teacher != request.user:
+                return Response(
+                    {"error": "You are not authorized to create a session for this timetable."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, id=None):
         if not id:
