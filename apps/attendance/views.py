@@ -38,10 +38,16 @@ class AttendanceSessionCreate(APIView):
                 )
 
             if AttendanceSession.objects.filter(timetable=timetable).exists():
-                return Response(
-                    {"error": "An attendance session already exists for this timetable."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                session = AttendanceSession.objects.get(timetable=timetable)
+                has_records = AttendanceRecord.objects.filter(session=session).exists()
+
+                if has_records:
+                    return Response(
+                        {"error": "An attendance session with records already exists for this timetable."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                else:
+                    session.delete()  # delete empty session, allow fresh one
 
             serializer = AttendanceSessionSerializer(data=request.data)
             if serializer.is_valid():
@@ -50,7 +56,6 @@ class AttendanceSessionCreate(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         else:
-            # Check teacher in manual body matches logged-in user
             teacher_id = request.data.get('teacher')
             if int(teacher_id) != request.user.id:
                 return Response(
