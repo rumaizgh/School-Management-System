@@ -46,3 +46,12 @@ class SubjectsByTeacher(APIView):
 
         serializer = SubjectSerializer(subjects, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class DeleteSubject(APIView):
+    def delete(self, request, id):
+        subject = get_object_or_404(Subject, id=id)
+        subject.delete()
+        return Response(
+            {"message": "Subject deleted successfully"},
+            status=status.HTTP_204_NO_CONTENT
+        )
