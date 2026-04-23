@@ -24,11 +24,7 @@ class UserDataResource(resources.ModelResource):
         skip_unchanged = True
         import_id_fields = ['email']
 
-    def get_import_data_kwargs(self, request, *args, **kwargs):
-        kwargs = super().get_import_data_kwargs(request, *args, **kwargs)
-        return kwargs
-
-    def before_import_row(self, row, **kwargs):
-        # Skip rows where email is empty
+    def skip_row(self, instance, original, row, import_validation_errors=None):
         if not row.get('email'):
-            raise Exception("Skipping empty row")
+            return True  # silently skip blank rows
+        return super().skip_row(instance, original, row, import_validation_errors)
