@@ -19,5 +19,6 @@ env/
 .idea/
 
 # Ignore Django migrations
-**/migrations/
-!**/migrations/__init__.py
+static/admin/
+static/rest_framework/
+static/import_export/
