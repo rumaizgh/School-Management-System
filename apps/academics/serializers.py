@@ -21,13 +21,13 @@ class BatchSerializer(serializers.ModelSerializer):
             is_active=True,
             classs=obj.id
         ).count()
-
+    
     def get_teachers(self, obj):
         return UserData.objects.filter(
             user_type='teacher',
             is_active=True,
-            subjects__classs=obj.id
-        ).distinct().count()
+            classs=obj.id
+        ).count()
 
     def get_total_fee(self, obj):
         return Fee.objects.filter(
