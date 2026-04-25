@@ -11,7 +11,7 @@ staticfiles/
 
 # Virtual environment
 venv/
-.env/
+.env
 env/
 
 # IDE settings
