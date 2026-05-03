@@ -1,0 +1,14 @@
+venv/
+.env
+*.sqlite3
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.github/
+*.log
+media/
+staticfiles/
+static/
+backup.json
+README.md
