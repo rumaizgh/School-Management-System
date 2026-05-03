@@ -89,7 +89,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     classs_name = serializers.CharField(source='fee.batch.classs', read_only=True)
     balance = serializers.SerializerMethodField()
     total_paid = serializers.SerializerMethodField()
-
+    print("test")
     class Meta:
         model = Payment
         fields = '__all__'
