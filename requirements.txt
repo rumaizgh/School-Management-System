@@ -10,3 +10,4 @@ openpyxl==3.1.5
 PyJWT==2.10.1
 sqlparse==0.5.3
 tablib==3.9.0
+python-decouple==3.8
