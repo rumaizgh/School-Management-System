@@ -25,7 +25,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['rumaiz.duckdns.org', '127.0.0.1', 'localhost']
 
 # Application definition
 
@@ -134,6 +134,11 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+
+# Prevent clickjacking
+X_FRAME_OPTIONS = 'DENY'
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

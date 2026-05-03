@@ -11,7 +11,7 @@ staticfiles/
 
 # Virtual environment
 venv/
-.env/
+.env
 env/
 
 # IDE settings
@@ -22,3 +22,6 @@ env/
 static/admin/
 static/rest_framework/
 static/import_export/
+
+
+*.swp

@@ -1,14 +1,11 @@
 name: Deploy to AWS
-
 on:
   push:
     branches:
       - main
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Deploy to Server
         uses: appleboy/ssh-action@master
@@ -19,9 +16,7 @@ jobs:
           script: |
             cd /home/ubuntu/hacer/School-Management-System
             git pull origin main
-            source venv/bin/activate
-            pip install -r requirements.txt
-            python manage.py migrate
-            python manage.py collectstatic --noinput
-            sudo systemctl restart gunicorn
-            sudo systemctl restart nginx
+            docker compose build
+            docker compose up -d
+            docker compose exec -T web python manage.py migrate
+            docker compose exec -T web python manage.py collectstatic --noinput
