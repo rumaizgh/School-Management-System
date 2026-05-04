@@ -5,12 +5,16 @@ from apps.account.models import UserData
 
 class FeeResource(resources.ModelResource):
 
+    batch_name = fields.Field(column_name='Batch Name')
     total_paid = fields.Field()
     balance = fields.Field()
 
     class Meta:
         model = Fee
-        fields = ('student__name', 'amount', 'total_paid', 'balance')
+        fields = ('student__name', 'batch_name', 'amount', 'total_paid', 'balance')
+
+    def dehydrate_batch_name(self, obj):
+        return str(obj.batch)
 
     def dehydrate_total_paid(self, obj):
         return obj.total_paid()
