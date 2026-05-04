@@ -257,8 +257,11 @@ class ViewFeeByStudent(APIView):
 
 class ExportFee(APIView):
     def get(self, request):
+        batch_id = request.GET.get('batch_id')
         fees = Fee.objects.all()
 
+        if batch_id:
+            fees = fees.filter(batch_id=batch_id)
         dataset = FeeResource().export(queryset=fees)
 
         response = HttpResponse(
@@ -266,6 +269,7 @@ class ExportFee(APIView):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
 
-        response['Content-Disposition'] = 'attachment; filename="fees.xlsx"'
+        filename = f"fees_batch_{batch_id}.xlsx" if batch_id else "fees_all.xlsx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
         return response
