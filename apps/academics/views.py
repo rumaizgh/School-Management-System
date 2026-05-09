@@ -273,3 +273,22 @@ class ExportFee(APIView):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
         return response
+
+    def get(self, request):
+        batch_id = request.GET.get('batch_id')
+        fees = Fee.objects.select_related(
+            'student',
+            'batch'
+        ).all()
+
+        if batch_id:
+            fees = fees.filter(batch_id=batch_id)
+
+        resource = FeeResource()
+        dataset = resource.export(queryset=fees)
+
+        return Response({
+            "status": True,
+            "count": fees.count(),
+            "data": dataset.dict
+        }) 
