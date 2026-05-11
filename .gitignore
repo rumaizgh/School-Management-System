@@ -27,5 +27,3 @@ static/import_export/
 *.swp
 backup.json
 .env
-.conf
-config/
