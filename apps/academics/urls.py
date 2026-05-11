@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee
+from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,FeeExportPreview,SearchPaymentHistory
 from django.urls import path, include
 
 router = DefaultRouter()
@@ -22,7 +22,7 @@ urlpatterns = [
     path('payment/', CreatePayment.as_view(), name='createpayment'),
     path('payment/<int:student_id>/', CreatePayment.as_view(), name='getpayment'),
     path('export-fees/', ExportFee.as_view(), name='export-fees'),
-
-
+    path('export-fees-preview/', FeeExportPreview.as_view(), name='export-fees-preview'),
+    path('payment/search/<int:id>/', SearchPaymentHistory.as_view(), name='search-payment-history'),
 
 ]

@@ -273,7 +273,8 @@ class ExportFee(APIView):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
         return response
-
+    
+class FeeExportPreview(APIView):
     def get(self, request):
         batch_id = request.GET.get('batch_id')
         fees = Fee.objects.select_related(
@@ -291,4 +292,11 @@ class ExportFee(APIView):
             "status": True,
             "count": fees.count(),
             "data": dataset.dict
-        }) 
+        })
+
+class SearchPaymentHistory(APIView):
+
+    def get(self, request, id):
+        payment = get_object_or_404(Payment, id=id)
+        serializer = PaymentSerializer(payment)
+        return Response(serializer.data, status=200) 

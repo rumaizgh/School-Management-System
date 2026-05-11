@@ -83,7 +83,13 @@ class ViewAllStudents(ListAPIView):
     pagination_class = CustomPagination
 
     def get_queryset(self):
-        return UserData.objects.filter(user_type='student', is_active=True)
+        queryset = UserData.objects.filter(user_type='student', is_active=True)
+
+        id = self.kwargs.get('id')
+        if id:
+            queryset = queryset.filter(id=id)
+
+        return queryset
     
 class CreateStudent(APIView):
     permission_classes = [IsAuthenticated,IsAdmin]

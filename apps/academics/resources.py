@@ -6,8 +6,8 @@ from apps.account.models import UserData
 class FeeResource(resources.ModelResource):
 
     batch_name = fields.Field(column_name='Batch Name')
-    total_paid = fields.Field()
-    balance = fields.Field()
+    total_paid = fields.Field(column_name='Total Paid')
+    balance = fields.Field(column_name='Balance')
 
     class Meta:
         model = Fee

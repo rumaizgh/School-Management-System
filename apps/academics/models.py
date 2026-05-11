@@ -38,8 +38,13 @@ class Fee(models.Model):
         return self.total_paid() >= self.amount
     
 class Payment(models.Model):
+    PAYMENT_METHOD_CHOICES = [
+        ('cash', 'Cash'),
+        ('upi', 'UPI'),
+    ]
     fee = models.ForeignKey(Fee, related_name='payments', on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES, default='cash')
     paid_on = models.DateField(auto_now_add=True)
     
 class TimeTable(models.Model):
