@@ -25,7 +25,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 
-ALLOWED_HOSTS = ['rumaiz.duckdns.org', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['rumaiz.duckdns.org', 'talentpro.duckdns.org', '127.0.0.1', 'localhost']
 
 # Application definition
 
