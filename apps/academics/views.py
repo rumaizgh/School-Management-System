@@ -358,14 +358,18 @@ class MarkByStudentAPIView(APIView):
 
     def get(self, request, student_id):
         """Get all marks for a specific student"""
+        # Students can only view their own marks
+        if request.user.user_type == 'student' and request.user.id != student_id:
+            return Response({"error": "You can only view your own marks"}, status=status.HTTP_403_FORBIDDEN)
+
         marks = Mark.objects.filter(student_id=student_id).order_by('-id')
-        
+
         if not marks.exists():
             return Response(
                 {"message": "No marks found for this student"},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         serializer = MarkSerializer(marks, many=True)
         return Response(serializer.data)
 

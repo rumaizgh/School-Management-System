@@ -116,8 +116,27 @@ class MarkSerializer(serializers.ModelSerializer):
     exam_name = serializers.CharField()
     student_name = serializers.CharField(source='student.name', read_only=True)
     subject_name = serializers.CharField(source='subject.subject_name', read_only=True)
+    batch = serializers.PrimaryKeyRelatedField(queryset=Batch.objects.all(), write_only=True, required=False)
     
     class Meta:
         model = Mark
-        fields = ['id', 'exam_name', 'subject', 'subject_name', 'student', 'student_name', 'total_mark', 'obtained_mark', 'percentage']
+        fields = ['id', 'exam_name', 'subject', 'subject_name', 'student', 'student_name', 'batch', 'total_mark', 'obtained_mark', 'percentage']
         read_only_fields = ['id', 'percentage']
+
+    def validate(self, data):
+        # Validate obtained_mark does not exceed total_mark
+        total = data.get('total_mark') if data.get('total_mark') is not None else (self.instance.total_mark if getattr(self, 'instance', None) else None)
+        obtained = data.get('obtained_mark') if data.get('obtained_mark') is not None else (self.instance.obtained_mark if getattr(self, 'instance', None) else None)
+        if total is not None and obtained is not None:
+            if obtained > total:
+                raise serializers.ValidationError({'obtained_mark': 'obtained_mark cannot be greater than total_mark.'})
+
+        # If batch provided, ensure the student belongs to that batch
+        batch = data.get('batch')
+        student = data.get('student') if data.get('student') is not None else (self.instance.student if getattr(self, 'instance', None) else None)
+        if batch and student:
+            # `classs` is a ManyToMany on UserData
+            if not student.classs.filter(id=batch.id).exists():
+                raise serializers.ValidationError({'student': 'Student does not belong to the selected batch.'})
+
+        return data
