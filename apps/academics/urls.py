@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,FeeExportPreview,SearchPaymentHistory
+from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,FeeExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView
 from django.urls import path, include
 
 router = DefaultRouter()
@@ -24,5 +24,8 @@ urlpatterns = [
     path('export-fees/', ExportFee.as_view(), name='export-fees'),
     path('export-fees-preview/', FeeExportPreview.as_view(), name='export-fees-preview'),
     path('payment/search/<int:id>/', SearchPaymentHistory.as_view(), name='search-payment-history'),
-
+    path('marks/', MarkListCreateAPIView.as_view(), name='marks-list-create'),
+    path('marks/<int:id>/', MarkUpdateAPIView.as_view(), name='marks-update-delete'),
+    path('marks/student/<int:student_id>/', MarkByStudentAPIView.as_view(), name='marks-by-student'),
+    path('marks/subject/<int:subject_id>/', MarkBySubjectAPIView.as_view(), name='marks-by-subject'),
 ]

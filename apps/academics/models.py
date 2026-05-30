@@ -74,3 +74,21 @@ class TimeTable(models.Model):
 
     def __str__(self):
         return f"{self.start_time} - {self.end_time}"
+
+class Mark(models.Model):
+    exam_name = models.CharField(max_length=100)
+    subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE, related_name='marks')
+    student = models.ForeignKey('account.UserData', on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'}, related_name='marks')
+    total_mark = models.IntegerField()
+    obtained_mark = models.IntegerField()
+    percentage = models.DecimalField(max_digits=5, decimal_places=2, editable=False)
+
+    def save(self, *args, **kwargs):
+        if self.total_mark > 0:
+            self.percentage = (self.obtained_mark / self.total_mark) * 100
+        else:
+            self.percentage = 0
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.exam_name} - {self.student.name} ({self.percentage}%)"

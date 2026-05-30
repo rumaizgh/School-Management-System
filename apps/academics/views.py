@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .models import Batch, Fee, Payment
-from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer
+from .models import Batch, Fee, Payment, Mark
+from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer
 from apps.account.serializers import UserDataSerializer
 from apps.academics.serializers import TimeTableSerializer
 from .permissions import IsAdmin,IsTeacher
@@ -300,3 +300,88 @@ class SearchPaymentHistory(APIView):
         payment = get_object_or_404(Payment, id=id)
         serializer = PaymentSerializer(payment)
         return Response(serializer.data, status=200) 
+
+
+class MarkListCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id=None):
+        """Get all marks or a specific mark by id"""
+        if id:
+            mark = get_object_or_404(Mark, id=id)
+            serializer = MarkSerializer(mark)
+            return Response(serializer.data)
+        
+        marks = Mark.objects.all().order_by('-id')
+        serializer = MarkSerializer(marks, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """Create a new mark"""
+        serializer = MarkSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class MarkUpdateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, id):
+        """Update a mark (partial update)"""
+        mark = get_object_or_404(Mark, id=id)
+        serializer = MarkSerializer(mark, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, id):
+        """Update a mark (full update)"""
+        mark = get_object_or_404(Mark, id=id)
+        serializer = MarkSerializer(mark, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id):
+        """Delete a mark"""
+        mark = get_object_or_404(Mark, id=id)
+        mark.delete()
+        return Response({"message": "Mark deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+
+class MarkByStudentAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_id):
+        """Get all marks for a specific student"""
+        marks = Mark.objects.filter(student_id=student_id).order_by('-id')
+        
+        if not marks.exists():
+            return Response(
+                {"message": "No marks found for this student"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = MarkSerializer(marks, many=True)
+        return Response(serializer.data)
+
+
+class MarkBySubjectAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, subject_id):
+        """Get all marks for a specific subject"""
+        marks = Mark.objects.filter(subject_id=subject_id).order_by('-id')
+        
+        if not marks.exists():
+            return Response(
+                {"message": "No marks found for this subject"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = MarkSerializer(marks, many=True)
+        return Response(serializer.data)

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Batch,Fee,TimeTable,Payment
+from .models import Batch,Fee,TimeTable,Payment,Mark
 from apps.account.models import UserData
 from django.db.models import Count, Q, Sum
 
@@ -110,3 +110,14 @@ class PaymentSerializer(serializers.ModelSerializer):
             "id": obj.fee.student.id,
             "name": obj.fee.student.name
         }
+
+
+class MarkSerializer(serializers.ModelSerializer):
+    exam_name = serializers.CharField()
+    student_name = serializers.CharField(source='student.name', read_only=True)
+    subject_name = serializers.CharField(source='subject.subject_name', read_only=True)
+    
+    class Meta:
+        model = Mark
+        fields = ['id', 'exam_name', 'subject', 'subject_name', 'student', 'student_name', 'total_mark', 'obtained_mark', 'percentage']
+        read_only_fields = ['id', 'percentage']
