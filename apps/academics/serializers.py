@@ -89,10 +89,10 @@ class PaymentSerializer(serializers.ModelSerializer):
     classs_name = serializers.CharField(source='fee.batch.classs', read_only=True)
     balance = serializers.SerializerMethodField()
     total_paid = serializers.SerializerMethodField()
-    print("test")
+    
     class Meta:
         model = Payment
-        fields = '__all__'
+        fields = ['id', 'fee', 'amount', 'payment_method', 'paid_on', 'student', 'classs_name', 'balance', 'total_paid']
 
     def get_total_paid(self, obj):
         total = Payment.objects.filter(
