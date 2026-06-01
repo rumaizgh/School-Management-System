@@ -116,11 +116,11 @@ class MarkSerializer(serializers.ModelSerializer):
     exam_name = serializers.CharField()
     student_name = serializers.CharField(source='student.name', read_only=True)
     subject_name = serializers.CharField(source='subject.subject_name', read_only=True)
-    batch = serializers.PrimaryKeyRelatedField(queryset=Batch.objects.all(), write_only=True, required=False)
+    batch_name = serializers.CharField(source='batch.classs', read_only=True)
     
     class Meta:
         model = Mark
-        fields = ['id', 'exam_name', 'subject', 'subject_name', 'student', 'student_name', 'batch', 'total_mark', 'obtained_mark', 'percentage']
+        fields = ['id', 'exam_name', 'subject', 'subject_name', 'student', 'student_name', 'batch', 'batch_name', 'total_mark', 'obtained_mark', 'percentage']
         read_only_fields = ['id', 'percentage']
 
     def validate(self, data):

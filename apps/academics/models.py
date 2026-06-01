@@ -79,9 +79,10 @@ class Mark(models.Model):
     exam_name = models.CharField(max_length=100)
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE, related_name='marks')
     student = models.ForeignKey('account.UserData', on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'}, related_name='marks')
-    total_mark = models.IntegerField()
-    obtained_mark = models.IntegerField()
-    percentage = models.DecimalField(max_digits=5, decimal_places=2, editable=False)
+    batch = models.ForeignKey('academics.Batch', on_delete=models.CASCADE, null=True, blank=True)
+    total_mark = models.DecimalField(max_digits=10, decimal_places=2)
+    obtained_mark = models.DecimalField(max_digits=10, decimal_places=2)
+    percentage = models.DecimalField(max_digits=6, decimal_places=2, editable=False)
 
     def save(self, *args, **kwargs):
         if self.total_mark > 0:
