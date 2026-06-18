@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('academics', '0001_initial'),
-
+        ('account', '0001_initial'),
     ]
 
     operations = [
