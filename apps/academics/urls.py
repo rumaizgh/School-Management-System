@@ -1,10 +1,12 @@
 from rest_framework.routers import DefaultRouter
-from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,FeeExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView
+from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,FeeExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView
 from django.urls import path, include
 
 router = DefaultRouter()
 
 urlpatterns = [
+    path('institute/', InstituteView.as_view()),
+    path('institute/<int:id>/', InstituteView.as_view()),
     path('class/teacher/', ViewAllClassTeacher.as_view()),
     path('class/', CreateClass.as_view()),
     path('class/<int:id>/', CreateClass.as_view()),

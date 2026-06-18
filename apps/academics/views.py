@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .models import Batch, Fee, Payment, Mark
-from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer
+from .models import Batch, Fee, Payment, Mark, Institute
+from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer,InstituteSerializer
 from apps.account.serializers import UserDataSerializer
 from apps.academics.serializers import TimeTableSerializer
 from .permissions import IsAdmin,IsTeacher
@@ -389,3 +389,50 @@ class MarkBySubjectAPIView(APIView):
         
         serializer = MarkSerializer(marks, many=True)
         return Response(serializer.data)
+
+
+class InstituteView(APIView):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get(self, request, id=None):
+        """Get all institutes or a specific institute by id"""
+        if id:
+            institute = get_object_or_404(Institute, id=id)
+            serializer = InstituteSerializer(institute)
+            return Response(serializer.data)
+        
+        institutes = Institute.objects.all()
+        serializer = InstituteSerializer(institutes, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """Create a new institute"""
+        serializer = InstituteSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, id):
+        """Update an institute (partial update)"""
+        institute = get_object_or_404(Institute, id=id)
+        serializer = InstituteSerializer(institute, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, id):
+        """Update an institute (full update)"""
+        institute = get_object_or_404(Institute, id=id)
+        serializer = InstituteSerializer(institute, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id):
+        """Delete an institute"""
+        institute = get_object_or_404(Institute, id=id)
+        institute.delete()
+        return Response({"message": "Institute deleted successfully"}, status=status.HTTP_204_NO_CONTENT)

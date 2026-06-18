@@ -2,6 +2,15 @@ from datetime import timezone
 from django.db import models
 from django.utils import timezone
 
+class Institute(models.Model):
+    name = models.CharField(max_length=255)
+    address = models.TextField()
+    logo = models.ImageField(upload_to='institute_logos/')
+    established_date = models.DateField()
+    
+    def __str__(self):
+        return self.name
+
 class Batch(models.Model):
 
     classs = models.CharField(max_length=10)
