@@ -1,10 +1,8 @@
 name: Deploy to AWS
-
 on:
   push:
     branches:
       - main
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,5 +16,10 @@ jobs:
           script: |
             cd /home/ubuntu/hacer/School-Management-System
             git pull origin main
-            docker compose up -d --build
-            docker compose exec -T web python manage.py collectstatic --noinput
+            source venv/bin/activate
+            pip install -r requirements.txt
+            python manage.py migrate
+            python manage.py collectstatic --noinput
+            pkill -f gunicorn
+            gunicorn config.wsgi:application --bind 0.0.0.0:8000 &
+            echo "Deployment successful!"
