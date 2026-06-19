@@ -27,6 +27,10 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = ['rumaiz.duckdns.org', 'talentpro.duckdns.org', '127.0.0.1', 'localhost']
 
+AUTHENTICATION_BACKENDS = [
+    'apps.account.backends.EmailBackend',
+]
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -102,8 +106,8 @@ else:
             'NAME': config('MYSQL_DATABASE'),
             'USER': config('MYSQL_USER'),
             'PASSWORD': config('MYSQL_PASSWORD'),
-            'HOST': 'db',
-            'PORT': '3306',
+            'HOST': config('MYSQL_HOST', default='db'),
+            'PORT': config('MYSQL_PORT', default='3306'),
         }
     }
 
