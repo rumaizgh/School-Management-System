@@ -296,7 +296,7 @@ class FeeExportPreview(APIView):
 
 class SearchPaymentHistory(APIView):
 
-    def get(self, request, id):
+    def get(self, request, id=None):
         q = request.GET.get('q')
         if q:
             payments = Payment.objects.filter(
@@ -304,6 +304,9 @@ class SearchPaymentHistory(APIView):
             ).order_by('-id')
             serializer = PaymentSerializer(payments, many=True)
             return Response(serializer.data, status=200)
+
+        if id is None:
+            return Response({"detail": "Payment id is required unless q is provided."}, status=400)
 
         payment = get_object_or_404(Payment, id=id)
         serializer = PaymentSerializer(payment)

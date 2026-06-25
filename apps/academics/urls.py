@@ -25,6 +25,7 @@ urlpatterns = [
     path('payment/<int:student_id>/', CreatePayment.as_view(), name='getpayment'),
     path('export-fees/', ExportFee.as_view(), name='export-fees'),
     path('export-fees-preview/', FeeExportPreview.as_view(), name='export-fees-preview'),
+    path('payment/search/', SearchPaymentHistory.as_view(), name='search-payment-history'),
     path('payment/search/<int:id>/', SearchPaymentHistory.as_view(), name='search-payment-history'),
     path('marks/', MarkListCreateAPIView.as_view(), name='marks-list-create'),
     path('marks/<int:id>/', MarkUpdateAPIView.as_view(), name='marks-update-delete'),
