@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password, is_password_usable
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -59,7 +59,9 @@ class UserData(AbstractUser):
     REQUIRED_FIELDS = []
     
     def save(self, *args, **kwargs):
-        if self.password and not self.password.startswith('pbkdf2_'):
+        if self.password is None or self.password == '':
+            self.set_unusable_password()
+        elif is_password_usable(self.password) and not self.password.startswith('pbkdf2_'):
             self.password = make_password(self.password)
         super().save(*args, **kwargs)
 
