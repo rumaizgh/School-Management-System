@@ -113,7 +113,9 @@ class PaymentSerializer(serializers.ModelSerializer):
     def get_student(self, obj):
         return {
             "id": obj.fee.student.id,
-            "name": obj.fee.student.name
+            "name": obj.fee.student.name,
+            "phone": obj.fee.student.phone,
+            "parent_contact": obj.fee.student.parent_contact
         }
 
 
