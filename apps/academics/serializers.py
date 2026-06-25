@@ -146,4 +146,13 @@ class MarkSerializer(serializers.ModelSerializer):
             if not student.classs.filter(id=batch.id).exists():
                 raise serializers.ValidationError({'student': 'Student does not belong to the selected batch.'})
 
+        # Validate that each student can only have one mark per exam
+        exam_name = data.get('exam_name')
+        if student and exam_name:
+            existing_mark = Mark.objects.filter(exam_name=exam_name, student=student)
+            if self.instance:
+                existing_mark = existing_mark.exclude(id=self.instance.id)
+            if existing_mark.exists():
+                raise serializers.ValidationError({'exam_name': 'This student already has a mark for this exam.'})
+
         return data
