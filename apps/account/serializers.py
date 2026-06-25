@@ -70,16 +70,23 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = UserData
         fields = "__all__"
         extra_kwargs = {
-            "email": {"required": True},
-            "phone" :{"required" : True},
+            "email": {"required": False, "allow_null": True, "allow_blank": True},
+            "parent_name": {"required": False, "allow_null": True, "allow_blank": True},
+            "parent_contact": {"required": False, "allow_null": True, "allow_blank": True},
+            "date_of_birth": {"required": False, "allow_null": True},
+            "phone" : {"required" : True},
             "user_type": {"required": False}
         }
 
     def create(self, validated_data):
         classs = validated_data.pop("classs", [])
         subject = validated_data.pop("subject", [])
+        password = validated_data.pop("password", None)
 
-        user = UserData.objects.create_user(**validated_data)
+        user = UserData(**validated_data)
+        if password:
+            user.set_password(password)
+        user.save()
 
         user.classs.set(classs)
         user.subject.set(subject)
@@ -87,6 +94,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return user
 
     def validate_email(self, value):
+        if not value:
+            return value
         if UserData.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email already exists.")
         return value
