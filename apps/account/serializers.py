@@ -59,7 +59,7 @@ class UserDataSerializer(serializers.ModelSerializer):
         return instance
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
     subject = serializers.PrimaryKeyRelatedField(
         queryset=Subject.objects.all(),
         many=True,

@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
-from django.contrib.auth.hashers import make_password, is_password_usable
+from django.contrib.auth.hashers import make_password
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -8,7 +8,8 @@ class UserManager(BaseUserManager):
             raise ValueError('The Email field must be set')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)
+        if password is not None:
+            user.set_password(password)
         user.save(using=self._db)
         return user
 
@@ -34,6 +35,7 @@ class UserData(AbstractUser):
     ]
 
     username = None
+    password = models.CharField(max_length=128, null=True, blank=True)
     user_type = models.CharField(max_length=10, choices=CHOICES)
     name = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(unique = True, blank=True, null=True)
@@ -59,9 +61,7 @@ class UserData(AbstractUser):
     REQUIRED_FIELDS = []
     
     def save(self, *args, **kwargs):
-        if self.password is None or self.password == '':
-            self.set_unusable_password()
-        elif is_password_usable(self.password) and not self.password.startswith('pbkdf2_'):
+        if self.password and not self.password.startswith('pbkdf2_'):
             self.password = make_password(self.password)
         super().save(*args, **kwargs)
 
