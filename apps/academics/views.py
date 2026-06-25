@@ -297,17 +297,9 @@ class FeeExportPreview(APIView):
 class SearchPaymentHistory(APIView):
 
     def get(self, request, id):
-        q = request.GET.get('q')
-        if q:
-            payments = Payment.objects.filter(
-                fee__student__name__icontains=q
-            ).order_by('-id')
-            serializer = PaymentSerializer(payments, many=True)
-            return Response(serializer.data, status=200)
-
         payment = get_object_or_404(Payment, id=id)
         serializer = PaymentSerializer(payment)
-        return Response(serializer.data, status=200)
+        return Response(serializer.data, status=200) 
 
 
 class MarkListCreateAPIView(APIView):
