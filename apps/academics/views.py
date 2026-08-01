@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .models import Batch, Fee, Payment, Mark, Institute
-from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer,InstituteSerializer
+from .models import Batch, Fee, Payment, Mark, Institute, Exam
+from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer,InstituteSerializer, ExamSerializer, ExamAnalyticsSerializer, BulkMarkSerializer
 from apps.account.serializers import UserDataSerializer
 from apps.academics.serializers import TimeTableSerializer
 from .permissions import IsAdmin,IsTeacher
@@ -447,3 +447,128 @@ class InstituteView(APIView):
         institute = get_object_or_404(Institute, id=id)
         institute.delete()
         return Response({"message": "Institute deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+class ExamListCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id=None):
+        if id:
+            exam = get_object_or_404(Exam, id=id)
+            serializer = ExamSerializer(exam)
+            return Response(serializer.data)
+        
+        exams = Exam.objects.all().order_by('-id')
+        batch_id = request.GET.get('batch_id')
+        subject_id = request.GET.get('subject_id')
+        if batch_id:
+            exams = exams.filter(batch_id=batch_id)
+        if subject_id:
+            exams = exams.filter(subject_id=subject_id)
+            
+        serializer = ExamSerializer(exams, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = ExamSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, id):
+        exam = get_object_or_404(Exam, id=id)
+        serializer = ExamSerializer(exam, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id):
+        exam = get_object_or_404(Exam, id=id)
+        exam.delete()
+        return Response({"message": "Exam deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+class ExamAnalyticsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, exam_id):
+        exam = get_object_or_404(Exam, id=exam_id)
+        marks = Mark.objects.filter(exam_name=exam.exam_name, batch=exam.batch, subject=exam.subject)
+        
+        total_students = marks.count()
+        if total_students == 0:
+            return Response({
+                "exam_id": exam.id,
+                "total_students_attended": 0,
+                "highest_mark": None,
+                "top_scorer_name": None,
+                "lowest_mark": None,
+                "average_mark": None,
+                "pass_percentage": 0.0
+            })
+            
+        highest_mark = marks.order_by('-obtained_mark').first()
+        lowest_mark = marks.order_by('obtained_mark').first()
+        average_mark = marks.aggregate(avg=Sum('obtained_mark'))['avg'] / total_students if total_students > 0 else 0
+        
+        pass_threshold = float(exam.total_mark) * 0.40
+        passed_students = marks.filter(obtained_mark__gte=pass_threshold).count()
+        pass_percentage = (passed_students / total_students) * 100 if total_students > 0 else 0
+        
+        data = {
+            "exam_id": exam.id,
+            "total_students_attended": total_students,
+            "highest_mark": highest_mark.obtained_mark if highest_mark else None,
+            "top_scorer_name": highest_mark.student.name if highest_mark else None,
+            "lowest_mark": lowest_mark.obtained_mark if lowest_mark else None,
+            "average_mark": round(average_mark, 2),
+            "pass_percentage": round(pass_percentage, 2)
+        }
+        serializer = ExamAnalyticsSerializer(data)
+        return Response(serializer.data)
+
+
+class ExamMarksListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, exam_id):
+        exam = get_object_or_404(Exam, id=exam_id)
+        marks = Mark.objects.filter(exam_name=exam.exam_name, batch=exam.batch, subject=exam.subject)
+        serializer = MarkSerializer(marks, many=True)
+        return Response(serializer.data)
+
+
+class BulkMarksUpdateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, exam_id):
+        exam = get_object_or_404(Exam, id=exam_id)
+        serializer = BulkMarkSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        marks_data = serializer.validated_data.get('marks', [])
+        
+        for item in marks_data:
+            student_id = item.get('student_id')
+            obtained = item.get('obtained_mark')
+            
+            student = get_object_or_404(UserData, id=student_id, user_type='student')
+            
+            mark, created = Mark.objects.get_or_create(
+                exam_name=exam.exam_name,
+                batch=exam.batch,
+                subject=exam.subject,
+                student=student,
+                defaults={
+                    'total_mark': exam.total_mark,
+                    'obtained_mark': obtained if obtained is not None else 0
+                }
+            )
+            
+            if not created:
+                mark.total_mark = exam.total_mark
+                mark.obtained_mark = obtained if obtained is not None else 0
+                mark.save()
+                
+        return Response({"message": "Marks successfully updated."}, status=status.HTTP_200_OK)

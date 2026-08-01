@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Batch,Fee,TimeTable,Payment,Mark,Institute
+from .models import Batch,Fee,TimeTable,Payment,Mark,Institute,Exam
 from apps.account.models import UserData
 from django.db.models import Count, Q, Sum
 
@@ -156,3 +156,27 @@ class MarkSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'exam_name': 'This student already has a mark for this exam.'})
 
         return data
+
+class ExamSerializer(serializers.ModelSerializer):
+    batch_name = serializers.CharField(source='batch.classs', read_only=True)
+    subject_name = serializers.CharField(source='subject.subject_name', read_only=True)
+
+    class Meta:
+        model = Exam
+        fields = ['id', 'exam_name', 'batch', 'batch_name', 'subject', 'subject_name', 'date', 'total_mark']
+
+class ExamAnalyticsSerializer(serializers.Serializer):
+    exam_id = serializers.IntegerField()
+    total_students_attended = serializers.IntegerField()
+    highest_mark = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    top_scorer_name = serializers.CharField(allow_null=True)
+    lowest_mark = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    average_mark = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    pass_percentage = serializers.FloatField()
+
+class BulkMarkItemSerializer(serializers.Serializer):
+    student_id = serializers.IntegerField()
+    obtained_mark = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True, required=False)
+
+class BulkMarkSerializer(serializers.Serializer):
+    marks = BulkMarkItemSerializer(many=True)

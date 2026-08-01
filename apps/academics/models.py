@@ -84,6 +84,19 @@ class TimeTable(models.Model):
     def __str__(self):
         return f"{self.start_time} - {self.end_time}"
 
+class Exam(models.Model):
+    exam_name = models.CharField(max_length=100)
+    batch = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
+    subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
+    date = models.DateField()
+    total_mark = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        unique_together = ['exam_name', 'batch', 'subject']
+
+    def __str__(self):
+        return f"{self.exam_name} - {self.subject} ({self.batch})"
+
 class Mark(models.Model):
     exam_name = models.CharField(max_length=100)
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE, related_name='marks')
