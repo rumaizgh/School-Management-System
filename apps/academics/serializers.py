@@ -163,7 +163,7 @@ class ExamSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Exam
-        fields = ['id', 'exam_name', 'batch', 'batch_name', 'subject', 'subject_name', 'date', 'total_mark']
+        fields = ['id', 'exam_name', 'batch', 'batch_name', 'subject', 'subject_name', 'timetable', 'total_mark']
 
 class ExamAnalyticsSerializer(serializers.Serializer):
     exam_id = serializers.IntegerField()

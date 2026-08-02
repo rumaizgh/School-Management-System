@@ -88,7 +88,7 @@ class Exam(models.Model):
     exam_name = models.CharField(max_length=100)
     batch = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
-    date = models.DateField()
+    timetable = models.ForeignKey('academics.TimeTable', on_delete=models.CASCADE, null=True, blank=True)
     total_mark = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:

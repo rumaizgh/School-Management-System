@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,FeeExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksListAPIView, BulkMarksUpdateAPIView
+from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,FeeExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksAPIView
 from django.urls import path, include
 
 router = DefaultRouter()
@@ -34,6 +34,6 @@ urlpatterns = [
     path('exams/', ExamListCreateAPIView.as_view(), name='exam-list-create'),
     path('exams/<int:id>/', ExamListCreateAPIView.as_view(), name='exam-CRUD'),
     path('exams/<int:exam_id>/analytics/', ExamAnalyticsAPIView.as_view(), name='exam-analytics'),
-    path('exams/<int:exam_id>/marks/', ExamMarksListAPIView.as_view(), name='exam-marks-list'),
-    path('exams/<int:exam_id>/marks/bulk/', BulkMarksUpdateAPIView.as_view(), name='exam-marks-bulk'),
+    path('exams/<int:exam_id>/marks/', ExamMarksAPIView.as_view(), name='exam-marks-list'),
+    path('exams/<int:exam_id>/marks/bulk/', ExamMarksAPIView.as_view(), name='exam-marks-bulk'),
 ]

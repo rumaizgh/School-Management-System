@@ -515,11 +515,17 @@ class ExamAnalyticsAPIView(APIView):
         passed_students = marks.filter(obtained_mark__gte=pass_threshold).count()
         pass_percentage = (passed_students / total_students) * 100 if total_students > 0 else 0
         
+        if highest_mark:
+            top_scorers = marks.filter(obtained_mark=highest_mark.obtained_mark)
+            top_scorer_names = ", ".join([m.student.name for m in top_scorers])
+        else:
+            top_scorer_names = None
+            
         data = {
             "exam_id": exam.id,
             "total_students_attended": total_students,
             "highest_mark": highest_mark.obtained_mark if highest_mark else None,
-            "top_scorer_name": highest_mark.student.name if highest_mark else None,
+            "top_scorer_name": top_scorer_names,
             "lowest_mark": lowest_mark.obtained_mark if lowest_mark else None,
             "average_mark": round(average_mark, 2),
             "pass_percentage": round(pass_percentage, 2)
@@ -528,7 +534,7 @@ class ExamAnalyticsAPIView(APIView):
         return Response(serializer.data)
 
 
-class ExamMarksListAPIView(APIView):
+class ExamMarksAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, exam_id):
@@ -536,10 +542,6 @@ class ExamMarksListAPIView(APIView):
         marks = Mark.objects.filter(exam_name=exam.exam_name, batch=exam.batch, subject=exam.subject)
         serializer = MarkSerializer(marks, many=True)
         return Response(serializer.data)
-
-
-class BulkMarksUpdateAPIView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def post(self, request, exam_id):
         exam = get_object_or_404(Exam, id=exam_id)
