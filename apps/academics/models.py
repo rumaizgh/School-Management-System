@@ -80,6 +80,7 @@ class TimeTable(models.Model):
     day = models.CharField(max_length=3, choices=DAY_CHOICES)
     start_time = models.TimeField()
     end_time = models.TimeField()
+    is_exam = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.start_time} - {self.end_time}"
@@ -88,7 +89,7 @@ class Exam(models.Model):
     exam_name = models.CharField(max_length=100)
     batch = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
-    timetable = models.ForeignKey('academics.TimeTable', on_delete=models.CASCADE, null=True, blank=True)
+    timetable = models.ForeignKey('academics.TimeTable', on_delete=models.CASCADE, null=True, blank=True, limit_choices_to={'is_exam': True})
     total_mark = models.DecimalField(max_digits=10, decimal_places=2)
     is_deleted = models.BooleanField(default=False)
 

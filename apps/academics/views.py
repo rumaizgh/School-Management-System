@@ -82,32 +82,37 @@ class TimeTablesView(APIView):
         if id:
             user = get_object_or_404(UserData, id=id)
 
-            if user.user_type == 'teacher':
-                if not user.is_active:
-                    return Response(
-                        {"error": "Teacher account is inactive."},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-                timetables = TimeTable.objects.filter(teacher=user)
+        if user.user_type == 'teacher':
+            if not user.is_active:
+                return Response(
+                    {"error": "Teacher account is inactive."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            timetables = TimeTable.objects.filter(teacher=user)
 
-            elif user.user_type == 'student':
-                if not user.is_active:
-                    return Response(
-                        {"error": "Student account is inactive."},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-                student_classes = user.classs.all()
+        elif user.user_type == 'student':
+            if not user.is_active:
+                return Response(
+                    {"error": "Student account is inactive."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            student_classes = user.classs.all()
 
-                if not student_classes.exists():
-                    return Response(
-                        {"error": "No class assigned to this student."},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
+            if not student_classes.exists():
+                return Response(
+                    {"error": "No class assigned to this student."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
-                timetables = TimeTable.objects.filter(classs__in=student_classes)
+            timetables = TimeTable.objects.filter(classs__in=student_classes)
 
-            else:
-                timetables = TimeTable.objects.all()
+        else:
+            timetables = TimeTable.objects.all()
+
+        is_exam = request.GET.get('is_exam')
+        if is_exam is not None:
+            is_exam_bool = is_exam.lower() in ['true', '1', 'yes']
+            timetables = timetables.filter(is_exam=is_exam_bool)
 
         serializer = TimeTableSerializer(timetables, many=True)
         return Response(serializer.data)
