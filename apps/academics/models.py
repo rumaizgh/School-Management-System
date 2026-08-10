@@ -90,6 +90,7 @@ class Exam(models.Model):
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
     timetable = models.ForeignKey('academics.TimeTable', on_delete=models.CASCADE, null=True, blank=True)
     total_mark = models.DecimalField(max_digits=10, decimal_places=2)
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ['exam_name', 'batch', 'subject']

@@ -453,11 +453,11 @@ class ExamListCreateAPIView(APIView):
 
     def get(self, request, id=None):
         if id:
-            exam = get_object_or_404(Exam, id=id)
+            exam = get_object_or_404(Exam, id=id, is_deleted=False)
             serializer = ExamSerializer(exam)
             return Response(serializer.data)
         
-        exams = Exam.objects.all().order_by('-id')
+        exams = Exam.objects.filter(is_deleted=False).order_by('-id')
         batch_id = request.GET.get('batch_id')
         subject_id = request.GET.get('subject_id')
         if batch_id:
@@ -476,7 +476,7 @@ class ExamListCreateAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, id):
-        exam = get_object_or_404(Exam, id=id)
+        exam = get_object_or_404(Exam, id=id, is_deleted=False)
         serializer = ExamSerializer(exam, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -484,15 +484,16 @@ class ExamListCreateAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, id):
-        exam = get_object_or_404(Exam, id=id)
-        exam.delete()
+        exam = get_object_or_404(Exam, id=id, is_deleted=False)
+        exam.is_deleted = True
+        exam.save()
         return Response({"message": "Exam deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 class ExamAnalyticsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, exam_id):
-        exam = get_object_or_404(Exam, id=exam_id)
+        exam = get_object_or_404(Exam, id=exam_id, is_deleted=False)
         marks = Mark.objects.filter(exam_name=exam.exam_name, batch=exam.batch, subject=exam.subject)
         
         total_students = marks.count()
@@ -538,13 +539,13 @@ class ExamMarksAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, exam_id):
-        exam = get_object_or_404(Exam, id=exam_id)
+        exam = get_object_or_404(Exam, id=exam_id, is_deleted=False)
         marks = Mark.objects.filter(exam_name=exam.exam_name, batch=exam.batch, subject=exam.subject)
         serializer = MarkSerializer(marks, many=True)
         return Response(serializer.data)
 
     def post(self, request, exam_id):
-        exam = get_object_or_404(Exam, id=exam_id)
+        exam = get_object_or_404(Exam, id=exam_id, is_deleted=False)
         serializer = BulkMarkSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
