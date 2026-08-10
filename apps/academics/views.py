@@ -461,8 +461,14 @@ class ExamListCreateAPIView(APIView):
             exam = get_object_or_404(Exam, id=id, is_deleted=False)
             serializer = ExamSerializer(exam)
             return Response(serializer.data)
-        
+        user = request.user
         exams = Exam.objects.filter(is_deleted=False).order_by('-id')
+        
+        if user.user_type == 'teacher':
+            exams = exams.filter(subject__teacher=user)
+        # elif user.user_type == 'student':
+        #     student_classes = user.classs.all()
+        #     exams = exams.filter(batch__in=student_classes)
         batch_id = request.GET.get('batch_id')
         subject_id = request.GET.get('subject_id')
         if batch_id:
