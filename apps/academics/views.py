@@ -6,7 +6,7 @@ from .models import Batch, Fee, Payment, Mark, Institute, Exam
 from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer,InstituteSerializer, ExamSerializer, ExamAnalyticsSerializer, BulkMarkSerializer
 from apps.account.serializers import UserDataSerializer
 from apps.academics.serializers import TimeTableSerializer
-from .permissions import IsAdmin,IsTeacher
+from .permissions import IsAdmin,IsTeacher,IsTeacherOrAdmin
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from apps.account.models import UserData
@@ -19,7 +19,10 @@ from apps.account.pagination import CustomPagination
 
 
 class CreateClass(APIView):
-    permission_classes=[IsAdmin]    
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsTeacherOrAdmin()]
+        return [IsAdmin()]
 
     def post(self,request):
         serializer=BatchSerializer(data = request.data)
@@ -34,7 +37,11 @@ class CreateClass(APIView):
             serializer = BatchSerializer(batch)
             return Response(serializer.data)
         
-        batches=Batch.objects.all()
+        if request.user.user_type == 'teacher':
+            batches = request.user.classs.all()
+        else:
+            batches = Batch.objects.all()
+            
         serializer=BatchSerializer(batches,many=True)
         return Response(serializer.data)
     

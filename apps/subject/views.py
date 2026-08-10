@@ -9,13 +9,21 @@ from .permissions import IsAdmin
 from django.shortcuts import get_object_or_404
 
 class ViewSubject(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self,request,id=None):
         if id:
             subject = get_object_or_404(Subject,id=id)
             serializer = SubjectSerializer(subject)
             return Response(serializer.data)
-        subject = Subject.objects.all()
-        serializer = SubjectSerializer(subject,many=True)
+            
+        user = request.user
+        subjects = Subject.objects.all()
+        
+        if user.user_type == 'teacher':
+            subjects = subjects.filter(teacher=user)
+            
+        serializer = SubjectSerializer(subjects, many=True)
         return Response(serializer.data)
 
 class AddSubject(APIView):
