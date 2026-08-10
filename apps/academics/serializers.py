@@ -87,6 +87,7 @@ class TimeTableSerializer(serializers.ModelSerializer):
             'day',
             'start_time',
             'end_time',
+            'is_exam',
         ]
 
 class PaymentSerializer(serializers.ModelSerializer):
