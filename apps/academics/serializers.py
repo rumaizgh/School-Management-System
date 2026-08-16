@@ -164,7 +164,17 @@ class ExamSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Exam
-        fields = ['id', 'exam_name', 'batch', 'batch_name', 'subject', 'subject_name', 'timetable', 'total_mark']
+        fields = ['id', 'exam_name', 'batch', 'batch_name', 'subject', 'subject_name', 'timetable', 'total_mark', 'pass_mark']
+
+    def validate(self, data):
+        total = data.get('total_mark') if data.get('total_mark') is not None else (self.instance.total_mark if getattr(self, 'instance', None) else None)
+        pass_mark = data.get('pass_mark') if data.get('pass_mark') is not None else (self.instance.pass_mark if getattr(self, 'instance', None) else None)
+        if pass_mark is not None:
+            if pass_mark < 0:
+                raise serializers.ValidationError({'pass_mark': 'pass_mark cannot be negative.'})
+            if total is not None and pass_mark > total:
+                raise serializers.ValidationError({'pass_mark': 'pass_mark cannot be greater than total_mark.'})
+        return data
 
 class ExamAnalyticsSerializer(serializers.Serializer):
     exam_id = serializers.IntegerField()

@@ -91,6 +91,7 @@ class Exam(models.Model):
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
     timetable = models.ForeignKey('academics.TimeTable', on_delete=models.CASCADE, null=True, blank=True, limit_choices_to={'is_exam': True})
     total_mark = models.DecimalField(max_digits=10, decimal_places=2)
+    pass_mark = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     is_deleted = models.BooleanField(default=False)
 
     class Meta:
