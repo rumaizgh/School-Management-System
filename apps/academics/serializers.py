@@ -121,40 +121,42 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 
 class MarkSerializer(serializers.ModelSerializer):
-    exam_name = serializers.CharField()
+    exam_name = serializers.CharField(source='exam.exam_name', read_only=True)
+    total_mark = serializers.DecimalField(source='exam.total_mark', max_digits=10, decimal_places=2, read_only=True)
+    subject = serializers.PrimaryKeyRelatedField(source='exam.subject', read_only=True)
+    subject_name = serializers.CharField(source='exam.subject.subject_name', read_only=True)
+    batch = serializers.PrimaryKeyRelatedField(source='exam.batch', read_only=True)
+    batch_name = serializers.CharField(source='exam.batch.classs', read_only=True)
     student_name = serializers.CharField(source='student.name', read_only=True)
-    subject_name = serializers.CharField(source='subject.subject_name', read_only=True)
-    batch_name = serializers.CharField(source='batch.classs', read_only=True)
     
     class Meta:
         model = Mark
-        fields = ['id', 'exam_name', 'subject', 'subject_name', 'student', 'student_name', 'batch', 'batch_name', 'total_mark', 'obtained_mark', 'percentage']
-        read_only_fields = ['id', 'percentage']
+        fields = ['id', 'exam', 'exam_name', 'subject', 'subject_name', 'student', 'student_name', 'batch', 'batch_name', 'total_mark', 'obtained_mark', 'percentage']
+        read_only_fields = ['id', 'subject', 'subject_name', 'batch', 'batch_name', 'total_mark', 'percentage']
 
     def validate(self, data):
-        # Validate obtained_mark does not exceed total_mark
-        total = data.get('total_mark') if data.get('total_mark') is not None else (self.instance.total_mark if getattr(self, 'instance', None) else None)
+        exam = data.get('exam') if data.get('exam') is not None else (self.instance.exam if getattr(self, 'instance', None) else None)
+        student = data.get('student') if data.get('student') is not None else (self.instance.student if getattr(self, 'instance', None) else None)
+
+        # Validate obtained_mark does not exceed exam's total_mark
+        total = exam.total_mark if (exam and exam.total_mark is not None) else None
         obtained = data.get('obtained_mark') if data.get('obtained_mark') is not None else (self.instance.obtained_mark if getattr(self, 'instance', None) else None)
         if total is not None and obtained is not None:
             if obtained > total:
-                raise serializers.ValidationError({'obtained_mark': 'obtained_mark cannot be greater than total_mark.'})
+                raise serializers.ValidationError({'obtained_mark': f'obtained_mark cannot be greater than total_mark ({total}).'})
 
-        # If batch provided, ensure the student belongs to that batch
-        batch = data.get('batch')
-        student = data.get('student') if data.get('student') is not None else (self.instance.student if getattr(self, 'instance', None) else None)
-        if batch and student:
-            # `classs` is a ManyToMany on UserData
-            if not student.classs.filter(id=batch.id).exists():
-                raise serializers.ValidationError({'student': 'Student does not belong to the selected batch.'})
+        # Ensure the student belongs to the exam's batch
+        if exam and exam.batch and student:
+            if not student.classs.filter(id=exam.batch.id).exists():
+                raise serializers.ValidationError({'student': 'Student does not belong to the batch of the selected exam.'})
 
         # Validate that each student can only have one mark per exam
-        exam_name = data.get('exam_name')
-        if student and exam_name:
-            existing_mark = Mark.objects.filter(exam_name=exam_name, student=student)
+        if student and exam:
+            existing_mark = Mark.objects.filter(exam=exam, student=student)
             if self.instance:
                 existing_mark = existing_mark.exclude(id=self.instance.id)
             if existing_mark.exists():
-                raise serializers.ValidationError({'exam_name': 'This student already has a mark for this exam.'})
+                raise serializers.ValidationError({'exam': 'This student already has a mark for this exam.'})
 
         return data
 
@@ -164,7 +166,7 @@ class ExamSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Exam
-        fields = ['id', 'exam_name', 'batch', 'batch_name', 'subject', 'subject_name', 'timetable', 'total_mark', 'pass_mark']
+        fields = ['id', 'exam_name', 'batch', 'batch_name', 'subject', 'subject_name', 'timetable', 'total_mark', 'pass_mark', 'question_paper']
 
     def validate(self, data):
         total = data.get('total_mark') if data.get('total_mark') is not None else (self.instance.total_mark if getattr(self, 'instance', None) else None)
@@ -183,6 +185,7 @@ class ExamAnalyticsSerializer(serializers.Serializer):
     top_scorer_name = serializers.CharField(allow_null=True)
     lowest_mark = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
     average_mark = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    pass_mark = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
     pass_percentage = serializers.FloatField()
 
 class BulkMarkItemSerializer(serializers.Serializer):

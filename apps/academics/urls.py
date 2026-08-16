@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,FeeExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksAPIView
+from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,FeeExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksAPIView, StudentExamListAPIView, StudentExamAnalyticsAPIView
 from django.urls import path, include
 
 router = DefaultRouter()
@@ -31,6 +31,8 @@ urlpatterns = [
     path('marks/<int:id>/', MarkUpdateAPIView.as_view(), name='marks-update-delete'),
     path('marks/student/<int:student_id>/', MarkByStudentAPIView.as_view(), name='marks-by-student'),
     path('marks/subject/<int:subject_id>/', MarkBySubjectAPIView.as_view(), name='marks-by-subject'),
+    path('exams/student/me/', StudentExamListAPIView.as_view(), name='student-exam-list'),
+    path('exams/student/me/<int:exam_id>/analytics/', StudentExamAnalyticsAPIView.as_view(), name='student-exam-analytics'),
     path('exams/', ExamListCreateAPIView.as_view(), name='exam-list-create'),
     path('exams/<int:id>/', ExamListCreateAPIView.as_view(), name='exam-CRUD'),
     path('exams/<int:exam_id>/analytics/', ExamAnalyticsAPIView.as_view(), name='exam-analytics'),

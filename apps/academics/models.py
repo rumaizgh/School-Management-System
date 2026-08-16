@@ -92,6 +92,7 @@ class Exam(models.Model):
     timetable = models.ForeignKey('academics.TimeTable', on_delete=models.CASCADE, null=True, blank=True, limit_choices_to={'is_exam': True})
     total_mark = models.DecimalField(max_digits=10, decimal_places=2)
     pass_mark = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    question_paper = models.FileField(upload_to='question_papers/', null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
 
     class Meta:
@@ -101,17 +102,31 @@ class Exam(models.Model):
         return f"{self.exam_name} - {self.subject} ({self.batch})"
 
 class Mark(models.Model):
-    exam_name = models.CharField(max_length=100)
-    subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE, related_name='marks')
+    exam = models.ForeignKey('academics.Exam', on_delete=models.CASCADE, related_name='marks', null=True, blank=True)
     student = models.ForeignKey('account.UserData', on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'}, related_name='marks')
-    batch = models.ForeignKey('academics.Batch', on_delete=models.CASCADE, null=True, blank=True)
-    total_mark = models.DecimalField(max_digits=10, decimal_places=2)
     obtained_mark = models.DecimalField(max_digits=10, decimal_places=2)
     percentage = models.DecimalField(max_digits=6, decimal_places=2, editable=False)
 
+    @property
+    def exam_name(self):
+        return self.exam.exam_name if self.exam else ""
+
+    @property
+    def subject(self):
+        return self.exam.subject if self.exam else None
+
+    @property
+    def batch(self):
+        return self.exam.batch if self.exam else None
+
+    @property
+    def total_mark(self):
+        return self.exam.total_mark if (self.exam and self.exam.total_mark) else None
+
     def save(self, *args, **kwargs):
-        if self.total_mark > 0:
-            self.percentage = (self.obtained_mark / self.total_mark) * 100
+        total = self.exam.total_mark if (self.exam and self.exam.total_mark) else None
+        if total and total > 0:
+            self.percentage = (self.obtained_mark / total) * 100
         else:
             self.percentage = 0
         super().save(*args, **kwargs)

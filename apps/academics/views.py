@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Batch, Fee, Payment, Mark, Institute, Exam
 from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer,InstituteSerializer, ExamSerializer, ExamAnalyticsSerializer, BulkMarkSerializer
@@ -14,7 +15,7 @@ from apps.academics.models import TimeTable
 from apps.subject.models import Subject
 from .resources import FeeResource
 from django.http import HttpResponse
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Q, Sum, Avg, Max, Min
 from apps.account.pagination import CustomPagination
 
 
@@ -462,6 +463,7 @@ class InstituteView(APIView):
 
 class ExamListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request, id=None):
         if id:
@@ -512,7 +514,7 @@ class ExamAnalyticsAPIView(APIView):
 
     def get(self, request, exam_id):
         exam = get_object_or_404(Exam, id=exam_id, is_deleted=False)
-        marks = Mark.objects.filter(exam_name=exam.exam_name, batch=exam.batch, subject=exam.subject)
+        marks = Mark.objects.filter(exam=exam)
         
         total_students = marks.count()
         if total_students == 0:
@@ -523,6 +525,7 @@ class ExamAnalyticsAPIView(APIView):
                 "top_scorer_name": None,
                 "lowest_mark": None,
                 "average_mark": None,
+                "pass_mark": exam.pass_mark,
                 "pass_percentage": 0.0
             })
             
@@ -530,8 +533,7 @@ class ExamAnalyticsAPIView(APIView):
         lowest_mark = marks.order_by('obtained_mark').first()
         average_mark = marks.aggregate(avg=Sum('obtained_mark'))['avg'] / total_students if total_students > 0 else 0
         
-        pass_threshold = float(exam.total_mark) * 0.40
-        passed_students = marks.filter(obtained_mark__gte=pass_threshold).count()
+        passed_students = marks.filter(obtained_mark__gte=exam.pass_mark).count()
         pass_percentage = (passed_students / total_students) * 100 if total_students > 0 else 0
         
         if highest_mark:
@@ -547,6 +549,7 @@ class ExamAnalyticsAPIView(APIView):
             "top_scorer_name": top_scorer_names,
             "lowest_mark": lowest_mark.obtained_mark if lowest_mark else None,
             "average_mark": round(average_mark, 2),
+            "pass_mark": exam.pass_mark,
             "pass_percentage": round(pass_percentage, 2)
         }
         serializer = ExamAnalyticsSerializer(data)
@@ -558,7 +561,7 @@ class ExamMarksAPIView(APIView):
 
     def get(self, request, exam_id):
         exam = get_object_or_404(Exam, id=exam_id, is_deleted=False)
-        marks = Mark.objects.filter(exam_name=exam.exam_name, batch=exam.batch, subject=exam.subject)
+        marks = Mark.objects.filter(exam=exam)
         serializer = MarkSerializer(marks, many=True)
         return Response(serializer.data)
 
@@ -577,19 +580,105 @@ class ExamMarksAPIView(APIView):
             student = get_object_or_404(UserData, id=student_id, user_type='student')
             
             mark, created = Mark.objects.get_or_create(
-                exam_name=exam.exam_name,
-                batch=exam.batch,
-                subject=exam.subject,
+                exam=exam,
                 student=student,
                 defaults={
-                    'total_mark': exam.total_mark,
                     'obtained_mark': obtained if obtained is not None else 0
                 }
             )
             
             if not created:
-                mark.total_mark = exam.total_mark
                 mark.obtained_mark = obtained if obtained is not None else 0
                 mark.save()
                 
         return Response({"message": "Marks successfully updated."}, status=status.HTTP_200_OK)
+
+
+class StudentExamListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        student = request.user
+        if student.user_type == 'student':
+            student_batches = student.classs.all()
+            exams = Exam.objects.filter(batch__in=student_batches, is_deleted=False).order_by('-id')
+        else:
+            exams = Exam.objects.filter(is_deleted=False).order_by('-id')
+
+        results = []
+        for exam in exams:
+            mark = Mark.objects.filter(exam=exam, student=student).first()
+
+            obtained_mark = float(mark.obtained_mark) if (mark and mark.obtained_mark is not None) else None
+            total_mark = float(exam.total_mark)
+            pass_mark = float(exam.pass_mark)
+
+            if mark and mark.obtained_mark is not None:
+                is_pass = bool(mark.obtained_mark >= exam.pass_mark)
+                status_str = "published"
+            else:
+                is_pass = False
+                status_str = "Pending"
+
+            date_str = exam.timetable.date.strftime('%Y-%m-%d') if (exam.timetable and exam.timetable.date) else None
+
+            results.append({
+                "exam_id": exam.id,
+                "exam_name": exam.exam_name,
+                "subject_name": exam.subject.subject_name if exam.subject else None,
+                "date": date_str,
+                "total_mark": total_mark,
+                "obtained_mark": obtained_mark,
+                "pass_mark": pass_mark,
+                "is_pass": is_pass,
+                "status": status_str
+            })
+
+        return Response({"results": results})
+
+
+class StudentExamAnalyticsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, exam_id):
+        student = request.user
+        exam = get_object_or_404(Exam, id=exam_id, is_deleted=False)
+        
+        mark = Mark.objects.filter(exam=exam, student=student).first()
+
+        obtained_mark = float(mark.obtained_mark) if (mark and mark.obtained_mark is not None) else None
+        total_mark = float(exam.total_mark)
+        pass_mark = float(exam.pass_mark)
+        is_pass = bool(mark.obtained_mark >= exam.pass_mark) if (mark and mark.obtained_mark is not None) else False
+
+        all_marks = Mark.objects.filter(exam=exam)
+        total_students = all_marks.count()
+
+        if total_students > 0:
+            avg_val = all_marks.aggregate(avg=Avg('obtained_mark'))['avg']
+            max_val = all_marks.aggregate(max=Max('obtained_mark'))['max']
+            min_val = all_marks.aggregate(min=Min('obtained_mark'))['min']
+            passed_count = all_marks.filter(obtained_mark__gte=exam.pass_mark).count()
+
+            average_mark = round(float(avg_val), 1) if avg_val is not None else 0.0
+            highest_mark = round(float(max_val), 1) if max_val is not None else 0.0
+            lowest_mark = round(float(min_val), 1) if min_val is not None else 0.0
+            pass_percentage = round((passed_count / total_students) * 100, 1)
+        else:
+            average_mark = 0.0
+            highest_mark = 0.0
+            lowest_mark = 0.0
+            pass_percentage = 0.0
+
+        return Response({
+            "exam_id": exam.id,
+            "obtained_mark": obtained_mark,
+            "total_mark": total_mark,
+            "is_pass": is_pass,
+            "class_analytics": {
+                "average_mark": average_mark,
+                "highest_mark": highest_mark,
+                "lowest_mark": lowest_mark,
+                "pass_percentage": pass_percentage
+            }
+        })
