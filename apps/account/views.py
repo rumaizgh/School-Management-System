@@ -209,3 +209,34 @@ class SearchTeacher(APIView):
 
         serializer = UserDataSerializer(teacher, many=True)
         return Response(serializer.data)
+
+
+class LookupTenantView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        email = request.GET.get('email')
+        if not email:
+            return Response({"detail": "Email parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from apps.customers.models import Client, Domain
+        from django_tenants.utils import tenant_context
+        from django.contrib.auth import get_user_model
+        
+        User = get_user_model()
+        
+        # Search for this user across all school schemas
+        for tenant in Client.objects.exclude(schema_name='public'):
+            with tenant_context(tenant):
+                if User.objects.filter(email=email).exists():
+                    domain = Domain.objects.filter(tenant=tenant, is_primary=True).first()
+                    if domain:
+                        # Extract the subdomain prefix (e.g. "schoolb" from "schoolb.rumaiz.duckdns.org")
+                        subdomain = domain.domain.split('.')[0]
+                        return Response({
+                            "status": True,
+                            "subdomain": subdomain,
+                            "domain": domain.domain
+                        })
+
+        return Response({"detail": "User not found in any registered school."}, status=status.HTTP_404_NOT_FOUND)
