@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.hashers import make_password
 
 class UserManager(BaseUserManager):
@@ -54,8 +55,23 @@ class UserData(AbstractUser):
         related_name="teachers",
         blank=True
     )
+    institute = models.ForeignKey(
+        'academics.Institute',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='admins'
+    )
 
     objects = UserManager()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=(~Q(user_type='admin') | Q(institute__isnull=False)),
+                name='admin_must_have_institute'
+            )
+        ]
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []

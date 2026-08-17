@@ -93,6 +93,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         return user
 
+    def validate(self, data):
+        user_type = data.get('user_type')
+        institute = data.get('institute')
+        if user_type == 'admin' and not institute:
+            raise serializers.ValidationError({'institute': 'Institute is required for admin users.'})
+        return data
+
     def validate_email(self, value):
         if not value:
             return value

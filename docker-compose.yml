@@ -1,11 +1,11 @@
 services:
 
   db:
-    image: mysql:8.0
+    image: postgres:15-alpine
     restart: always
     env_file: .env
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
 
   web:
     build: .
@@ -18,9 +18,10 @@ services:
     command: >
       sh -c "
       sleep 10 &&
-      python3 manage.py migrate &&
+      python3 manage.py migrate_schemas &&
       gunicorn config.wsgi:application --bind 0.0.0.0:8000
       "
 
 volumes:
-  mysql_data:
+  postgres_data:
+
