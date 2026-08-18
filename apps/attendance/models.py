@@ -5,6 +5,7 @@ from django.utils import timezone
 from apps.academics.models import Batch, TimeTable
 
 class AttendanceSession(models.Model):
+    institute = models.ForeignKey('academics.Institute', on_delete=models.CASCADE, related_name='attendance_sessions', null=True, blank=True)
     teacher = models.ForeignKey(UserData, limit_choices_to={'user_type': 'teacher'}, on_delete=models.CASCADE)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, null=True, blank=True)
     classs = models.ForeignKey(Batch,  on_delete=models.CASCADE)

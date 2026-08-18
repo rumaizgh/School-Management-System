@@ -20,13 +20,23 @@ class DashboardCountAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user_counts = UserData.objects.aggregate(
-            total_students=Count('id', filter=Q(user_type='student', is_active=True)),
-            total_teachers=Count('id', filter=Q(user_type='teacher', is_active=True)),
-        )
+        user = request.user
+        institute = user.institute
 
-        class_count = Batch.objects.count()
-        subject_count = Subject.objects.count()
+        if user.is_superuser and not institute:
+            user_counts = UserData.objects.aggregate(
+                total_students=Count('id', filter=Q(user_type='student', is_active=True)),
+                total_teachers=Count('id', filter=Q(user_type='teacher', is_active=True)),
+            )
+            class_count = Batch.objects.count()
+            subject_count = Subject.objects.count()
+        else:
+            user_counts = UserData.objects.filter(institute=institute).aggregate(
+                total_students=Count('id', filter=Q(user_type='student', is_active=True)),
+                total_teachers=Count('id', filter=Q(user_type='teacher', is_active=True)),
+            )
+            class_count = Batch.objects.filter(institute=institute).count()
+            subject_count = Subject.objects.filter(institute=institute).count()
 
         return Response({
             "status": True,
@@ -56,6 +66,10 @@ class LoginView(APIView):
         user_role = user.user_type 
 
         refresh = RefreshToken.for_user(user)
+        # Bind user's institute and user_type to JWT custom claims
+        refresh['institute_id'] = user.institute.id if user.institute else None
+        refresh['user_type'] = user.user_type
+        
         user_data = UserDataSerializer(user).data
 
         return Response({
@@ -95,14 +109,19 @@ class CreateStudent(APIView):
     permission_classes = [IsAuthenticated,IsAdmin]
 
     def get(self,request):
-        batches = Batch.objects.all()
+        user = request.user
+        if user.is_superuser and not user.institute:
+            batches = Batch.objects.all()
+        else:
+            batches = Batch.objects.filter(institute=user.institute)
+            
         serializer = BatchSerializer(batches, many=True)
         return Response({"batches": serializer.data})
 
     def post(self,request):
         serializer = UserCreateSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(user_type="student")
+            serializer.save(user_type="student", institute=request.user.institute)
             return Response(serializer.data,  status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
     
@@ -144,7 +163,7 @@ class CreateTeacher(APIView):
     def post(self,request):
         serializer = UserCreateSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(user_type="teacher")
+            serializer.save(user_type="teacher", institute=request.user.institute)
             return Response(serializer.data,  status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
     
@@ -180,63 +199,28 @@ class CreateTeacher(APIView):
             status=status.HTTP_200_OK
         )
     
-class SearchStudent(APIView):
-    def get(self, request):
-        query = request.GET.get("q", "")
+class SearchStudent(ListAPIView):
+    serializer_class = UserDataSerializer
 
-        students = UserData.objects.filter(
+    def get_queryset(self):
+        query = self.request.GET.get("q", "")
+        return UserData.objects.filter(
             Q(name__icontains=query) |
             Q(email__icontains=query) |
             Q(phone__icontains=query),
             user_type="student",
             is_active=True
         )
-
-        serializer = UserDataSerializer(students, many=True)
-        return Response(serializer.data)
     
-class SearchTeacher(APIView):
-    def get(self, request):
-        query = request.GET.get("q", "")
+class SearchTeacher(ListAPIView):
+    serializer_class = UserDataSerializer
 
-        teacher = UserData.objects.filter(
+    def get_queryset(self):
+        query = self.request.GET.get("q", "")
+        return UserData.objects.filter(
             Q(name__icontains=query) |
             Q(email__icontains=query) |
             Q(phone__icontains=query),
             user_type="teacher",
             is_active=True
         )
-
-        serializer = UserDataSerializer(teacher, many=True)
-        return Response(serializer.data)
-
-
-class LookupTenantView(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        email = request.GET.get('email')
-        if not email:
-            return Response({"detail": "Email parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        from apps.customers.models import Client, Domain
-        from django_tenants.utils import tenant_context
-        from django.contrib.auth import get_user_model
-        
-        User = get_user_model()
-        
-        # Search for this user across all school schemas
-        for tenant in Client.objects.exclude(schema_name='public'):
-            with tenant_context(tenant):
-                if User.objects.filter(email=email).exists():
-                    domain = Domain.objects.filter(tenant=tenant, is_primary=True).first()
-                    if domain:
-                        # Extract the subdomain prefix (e.g. "schoolb" from "schoolb.rumaiz.duckdns.org")
-                        subdomain = domain.domain.split('.')[0]
-                        return Response({
-                            "status": True,
-                            "subdomain": subdomain,
-                            "domain": domain.domain
-                        })
-
-        return Response({"detail": "User not found in any registered school."}, status=status.HTTP_404_NOT_FOUND)

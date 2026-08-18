@@ -4,8 +4,9 @@ from apps.academics.models import Batch
 
 
 class Subject(models.Model):
+    institute = models.ForeignKey('academics.Institute', on_delete=models.CASCADE, related_name='subjects', null=True, blank=True)
     subject_name = models.CharField(max_length=100)
-    subject_code = models.CharField(max_length=10, unique=True)
+    subject_code = models.CharField(max_length=10)
     teacher = models.ForeignKey(
         UserData, 
         on_delete=models.SET_NULL, 

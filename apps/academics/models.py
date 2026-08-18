@@ -12,7 +12,7 @@ class Institute(models.Model):
         return self.name
 
 class Batch(models.Model):
-
+    institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='batches', null=True, blank=True)
     classs = models.CharField(max_length=10)
 
     YEAR_CHOICES = [
@@ -26,12 +26,13 @@ class Batch(models.Model):
     )
 
     class Meta:
-        unique_together = ['classs', 'year']
+        unique_together = ['institute', 'classs', 'year']
 
     def __str__(self):
         return f"{self.classs}{f' ({self.year})' if self.year else ''}"
  
 class Fee(models.Model):
+    institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='fees', null=True, blank=True)
     student = models.ForeignKey('account.UserData', on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -68,6 +69,7 @@ class TimeTable(models.Model):
         ('sun', 'Sunday')
     ]
 
+    institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='timetables', null=True, blank=True)
     teacher = models.ForeignKey(
     "account.UserData",
     on_delete=models.SET_NULL,
@@ -86,6 +88,7 @@ class TimeTable(models.Model):
         return f"{self.start_time} - {self.end_time}"
 
 class Exam(models.Model):
+    institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='exams', null=True, blank=True)
     exam_name = models.CharField(max_length=100)
     batch = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
