@@ -35,3 +35,16 @@ class InstituteFilterBackend(filters.BaseFilterBackend):
 
         # Fallback for other tables: do not filter (or return empty if you want strict security)
         return queryset
+
+
+from django.shortcuts import get_object_or_404
+
+def get_institute_scoped_object_or_404(model, request, **kwargs):
+    """
+    A secure get_object_or_404 helper that first filters the queryset
+    by the requesting user's institute using the InstituteFilterBackend.
+    """
+    backend = InstituteFilterBackend()
+    scoped_queryset = backend.filter_queryset(request, model.objects.all(), None)
+    return get_object_or_404(scoped_queryset, **kwargs)
+

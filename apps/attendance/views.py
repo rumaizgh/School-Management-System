@@ -16,10 +16,10 @@ from apps.academics.models import Batch
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.db import transaction
-from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from apps.account.pagination import CustomPagination
 from apps.academics.models import TimeTable
+from apps.account.filters import get_institute_scoped_object_or_404, InstituteFilterBackend
 
 
 class AttendanceSessionCreate(APIView):
@@ -73,9 +73,10 @@ class AttendanceSessionCreate(APIView):
         if not id:
             return Response({"error": "Teacher ID is required"}, status=400)
 
-        teacher = get_object_or_404(UserData, id=id, user_type="teacher")
+        teacher = get_institute_scoped_object_or_404(UserData, request, id=id, user_type="teacher")
         # Get subjects of this teacher
         subjects = Subject.objects.filter(teacher=teacher).values("id", "subject_name")
+        subjects = InstituteFilterBackend().filter_queryset(request, subjects, None)
         subjects_data = list(subjects)
 
         # Get batches of this teacher
@@ -84,6 +85,7 @@ class AttendanceSessionCreate(APIView):
             .values("id", "classs")
             .distinct()
         )
+        batches = InstituteFilterBackend().filter_queryset(request, batches, None)
         batches_data = list(batches)
 
         return Response({"subjects": subjects_data, "batches": batches_data})
@@ -92,12 +94,14 @@ class AttendanceSessionCreate(APIView):
 class ViewAttendanceSessions(APIView):
     def get(self, request, id=None):
         if id:
-            teacher = get_object_or_404(UserData, id=id, user_type="teacher")
+            teacher = get_institute_scoped_object_or_404(UserData, request, id=id, user_type="teacher")
             records = AttendanceSession.objects.filter(
                 teacher=teacher
             ).order_by("-date")
         else:
             records = AttendanceSession.objects.all().order_by("-date")
+
+        records = InstituteFilterBackend().filter_queryset(request, records, None)
 
         paginator = CustomPagination()
         paginated_records = paginator.paginate_queryset(records, request)
@@ -106,7 +110,7 @@ class ViewAttendanceSessions(APIView):
         return paginator.get_paginated_response(serializer.data)
 
     def delete(self, request, id):
-        session = get_object_or_404(AttendanceSession, id=id)
+        session = get_institute_scoped_object_or_404(AttendanceSession, request, id=id)
         if request.user != session.teacher and not request.user.is_superuser:
             return Response(
                 {"error": "You do not have permission to delete this session"},
@@ -131,6 +135,7 @@ class GetSessionsByClass(APIView):
         records = AttendanceSession.objects.filter(
             classs_id=classs_id
         ).order_by("-date")
+        records = InstituteFilterBackend().filter_queryset(request, records, None)
 
         paginator = CustomPagination()
         paginated_records = paginator.paginate_queryset(records, request)
@@ -140,9 +145,10 @@ class GetSessionsByClass(APIView):
     
 class AttendanceStudentsList(APIView):
     def get(self, request, id):
-        session = AttendanceSession.objects.get(id=id)
+        session = get_institute_scoped_object_or_404(AttendanceSession, request, id=id)
         classs = session.classs
         students = UserData.objects.filter(classs=classs, user_type="student", is_active = True)
+        students = InstituteFilterBackend().filter_queryset(request, students, None)
         serializer = UserDataSerializer(students, many=True)
         return Response(serializer.data)
 
@@ -161,11 +167,9 @@ class AttendanceRecordView(APIView):
         return AttendanceRecordSerializer
 
     def get(self, request, id):
-        session = AttendanceSession.objects.get(id=id)
+        session = get_institute_scoped_object_or_404(AttendanceSession, request, id=id)
         status = request.GET.get("status")
         record = AttendanceRecord.objects.filter(session=session)
-        if status:
-            record = record.filter(status=status)
         serializer = self.get_serializer_class()(record, many=True)
         return Response(serializer.data)
 
@@ -173,7 +177,7 @@ class AttendanceRecordView(APIView):
         updated_records = []
 
         for item in request.data:
-            record = AttendanceRecord.objects.get(id=item["id"], session_id=id)
+            record = get_institute_scoped_object_or_404(AttendanceRecord, request, id=item["id"], session_id=id)
             serializer = AttendanceRecordSerializer(record, data=item, partial=True)
 
             if serializer.is_valid():
@@ -203,9 +207,10 @@ class StudentAttendanceView(APIView):
     
 class TeacherStudentAttendanceView(APIView):
     def get(self,request,id):
-        student=get_object_or_404(UserData,id=id,user_type="student")
+        student = get_institute_scoped_object_or_404(UserData, request, id=id, user_type="student")
         classs_id = request.GET.get("class")
         records = AttendanceRecord.objects.filter(student=student,session__teacher=request.user,session__classs=classs_id)
+        records = InstituteFilterBackend().filter_queryset(request, records, None)
         serializer = AttendanceRecordStudentSerializer(records, many=True)
         return Response(serializer.data)
 
@@ -223,6 +228,8 @@ class SearchSession(APIView):
             Q(subject__subject_name__icontains=query) |
             Q(classs__classs__icontains=query)
         ).order_by('-date', 'time')
+
+        sessions = InstituteFilterBackend().filter_queryset(request, sessions, None)
 
         if not sessions.exists():
             return Response({"message": "No sessions found"}, status=404)

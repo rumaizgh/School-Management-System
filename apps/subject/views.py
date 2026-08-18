@@ -6,19 +6,19 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Subject
 from .serializers import SubjectSerializer
 from .permissions import IsAdmin
-from django.shortcuts import get_object_or_404
+from apps.account.filters import get_institute_scoped_object_or_404, InstituteFilterBackend
 
 class ViewSubject(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self,request,id=None):
         if id:
-            subject = get_object_or_404(Subject,id=id)
+            subject = get_institute_scoped_object_or_404(Subject, request, id=id)
             serializer = SubjectSerializer(subject)
             return Response(serializer.data)
             
         user = request.user
-        subjects = Subject.objects.all()
+        subjects = InstituteFilterBackend().filter_queryset(request, Subject.objects.all(), None)
         
         if user.user_type == 'teacher':
             subjects = subjects.filter(teacher=user)
@@ -35,7 +35,7 @@ class AddSubject(APIView):
         return Response(serializer.errors)
     
     def patch(self, request, id):
-        timetable=get_object_or_404(Subject,id=id)
+        timetable = get_institute_scoped_object_or_404(Subject, request, id=id)
         serializer = SubjectSerializer(timetable, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -45,6 +45,7 @@ class AddSubject(APIView):
 class SubjectsByTeacher(APIView):
     def get(self, request, teacher_id):
         subjects = Subject.objects.filter(teacher_id=teacher_id)
+        subjects = InstituteFilterBackend().filter_queryset(request, subjects, None)
 
         if not subjects.exists():
             return Response(
@@ -57,7 +58,7 @@ class SubjectsByTeacher(APIView):
     
 class DeleteSubject(APIView):
     def delete(self, request, id):
-        subject = get_object_or_404(Subject, id=id)
+        subject = get_institute_scoped_object_or_404(Subject, request, id=id)
         subject.delete()
         return Response(
             {"message": "Subject deleted successfully"},

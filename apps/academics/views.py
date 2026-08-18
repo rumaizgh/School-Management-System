@@ -9,6 +9,7 @@ from apps.account.serializers import UserDataSerializer
 from apps.academics.serializers import TimeTableSerializer
 from .permissions import IsAdmin,IsTeacher,IsTeacherOrAdmin
 from django.shortcuts import get_object_or_404
+from apps.account.filters import get_institute_scoped_object_or_404, InstituteFilterBackend
 from rest_framework import status
 from apps.account.models import UserData
 from apps.academics.models import TimeTable
@@ -34,7 +35,7 @@ class CreateClass(APIView):
     
     def get(self,request,id=None):
         if id:
-            batch=get_object_or_404(Batch, id=id)
+            batch = get_institute_scoped_object_or_404(Batch, request, id=id)
             serializer = BatchSerializer(batch)
             return Response(serializer.data)
         
@@ -43,11 +44,12 @@ class CreateClass(APIView):
         else:
             batches = Batch.objects.all()
             
+        batches = InstituteFilterBackend().filter_queryset(request, batches, None)
         serializer=BatchSerializer(batches,many=True)
         return Response(serializer.data)
     
     def patch(self,request,id):
-        batch=get_object_or_404(Batch,id=id)
+        batch = get_institute_scoped_object_or_404(Batch, request, id=id)
         serializer=BatchSerializer(batch,data=request.data,partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -55,7 +57,7 @@ class CreateClass(APIView):
         return Response(serializer.errors)
     
     def delete(self,request,id):
-        batch = get_object_or_404(Batch,id=id)
+        batch = get_institute_scoped_object_or_404(Batch, request, id=id)
         batch.delete()
         return Response({"message": "Batch deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
     
@@ -69,15 +71,17 @@ class ViewAllClassTeacher(APIView):
     
 class ViewStudentsByClass(APIView):
     def get(self, request, id):
-        classs = get_object_or_404(Batch,id=id)
+        classs = get_institute_scoped_object_or_404(Batch, request, id=id)
         students = UserData.objects.filter(classs=classs, user_type="student", is_active = True)
+        students = InstituteFilterBackend().filter_queryset(request, students, None)
         serializer = UserDataSerializer(students, many=True)
         return Response(serializer.data)
     
 class ViewTeachersByClass(APIView):
     def get(self, request, id):
-        classs = get_object_or_404(Batch,id=id)
+        classs = get_institute_scoped_object_or_404(Batch, request, id=id)
         teachers = UserData.objects.filter(classs=classs, user_type="teacher", is_active = True)
+        teachers = InstituteFilterBackend().filter_queryset(request, teachers, None)
         serializer = UserDataSerializer(teachers, many=True)
         return Response(serializer.data)
      
@@ -88,7 +92,7 @@ class TimeTablesView(APIView):
         user = request.user
 
         if id:
-            user = get_object_or_404(UserData, id=id)
+            user = get_institute_scoped_object_or_404(UserData, request, id=id)
 
         if user.user_type == 'teacher':
             if not user.is_active:
@@ -122,6 +126,7 @@ class TimeTablesView(APIView):
             is_exam_bool = is_exam.lower() in ['true', '1', 'yes']
             timetables = timetables.filter(is_exam=is_exam_bool)
 
+        timetables = InstituteFilterBackend().filter_queryset(request, timetables, None)
         serializer = TimeTableSerializer(timetables, many=True)
         return Response(serializer.data)
     
@@ -133,7 +138,7 @@ class TimeTablesView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, id):
-        timetable=get_object_or_404(TimeTable,id=id)
+        timetable = get_institute_scoped_object_or_404(TimeTable, request, id=id)
         serializer = TimeTableSerializer(timetable, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -141,7 +146,7 @@ class TimeTablesView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self,request,id):
-        timetable = get_object_or_404(TimeTable,id=id)
+        timetable = get_institute_scoped_object_or_404(TimeTable, request, id=id)
         timetable.delete()
         return Response({"message": "TimeTable deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
     
@@ -151,16 +156,18 @@ class PaymentListCreateAPIView(APIView):
         student = request.GET.get('student')
 
         payments = Payment.objects.filter(fee__student__user_type="student")
-
         if student:
             payments = payments.filter(fee__student_id=student)
 
+        payments = InstituteFilterBackend().filter_queryset(request, payments, None)
         serializer = PaymentSerializer(payments, many=True)
         return Response(serializer.data)
 
     def post(self, request):
         serializer = PaymentSerializer(data=request.data)
         if serializer.is_valid():
+            # Secure validation: verify fee belongs to the requesting user's institute
+            fee = get_institute_scoped_object_or_404(Fee, request, id=serializer.validated_data['fee'].id)
             payment = serializer.save()
 
             fee = payment.fee
@@ -179,10 +186,11 @@ class FeeListCreateAPIView(APIView):
 
     def get(self, request, id=None):
         if id:
-            fees = Fee.objects.get(id=id,student__user_type="student")
+            fees = get_institute_scoped_object_or_404(Fee, request, id=id, student__user_type="student")
             serializer = FeeSerializer(fees)
             return Response(serializer.data)
         fees = Fee.objects.all().order_by("-id")
+        fees = InstituteFilterBackend().filter_queryset(request, fees, None)
         serializer = FeeSerializer(fees, many=True)
         return Response(serializer.data)
 
@@ -200,7 +208,7 @@ class FeeListCreateAPIView(APIView):
         return Response(serializer.errors, status=400)
     
     def patch(self, request, id):
-        fee=get_object_or_404(Fee,id=id)
+        fee = get_institute_scoped_object_or_404(Fee, request, id=id)
         serializer = FeeSerializer(fee, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -210,6 +218,7 @@ class FeeListCreateAPIView(APIView):
 class ViewFee(APIView):
     def get(self, request, classs_id):
         fees = Fee.objects.filter(batch=classs_id)
+        fees = InstituteFilterBackend().filter_queryset(request, fees, None)
 
         if not fees.exists():
             return Response(
@@ -229,6 +238,7 @@ class CreatePayment(APIView):
         else:
             payments = Payment.objects.all().order_by("-id")
 
+        payments = InstituteFilterBackend().filter_queryset(request, payments, None)
         paginator = CustomPagination()
         paginated_payments = paginator.paginate_queryset(payments, request)
 
@@ -239,7 +249,8 @@ class CreatePayment(APIView):
         serializer = PaymentSerializer(data=request.data)
 
         if serializer.is_valid():
-            fee = serializer.validated_data['fee']
+            # Secure validation: verify fee belongs to the requesting user's institute
+            fee = get_institute_scoped_object_or_404(Fee, request, id=serializer.validated_data['fee'].id)
             amount = serializer.validated_data['amount']
 
             if amount > fee.balance():
@@ -260,11 +271,10 @@ class ViewFeeByStudent(APIView):
                 student_id=student_id,
                 student__user_type="student"
             ).order_by("-id")
+        else:
+            fees = Fee.objects.all().order_by("-id")
 
-            serializer = FeeSerializer(fees, many=True)
-            return Response(serializer.data)
-
-        fees = Fee.objects.all().order_by("-id")
+        fees = InstituteFilterBackend().filter_queryset(request, fees, None)
         serializer = FeeSerializer(fees, many=True)
         return Response(serializer.data)
 
@@ -275,6 +285,8 @@ class ExportFee(APIView):
 
         if batch_id:
             fees = fees.filter(batch_id=batch_id)
+            
+        fees = InstituteFilterBackend().filter_queryset(request, fees, None)
         dataset = FeeResource().export(queryset=fees)
 
         response = HttpResponse(
@@ -298,6 +310,7 @@ class FeeExportPreview(APIView):
         if batch_id:
             fees = fees.filter(batch_id=batch_id)
 
+        fees = InstituteFilterBackend().filter_queryset(request, fees, None)
         resource = FeeResource()
         dataset = resource.export(queryset=fees)
 
@@ -315,13 +328,14 @@ class SearchPaymentHistory(APIView):
             payments = Payment.objects.filter(
                 fee__student__name__icontains=q
             ).order_by('-id')
+            payments = InstituteFilterBackend().filter_queryset(request, payments, None)
             serializer = PaymentSerializer(payments, many=True)
             return Response(serializer.data, status=200)
 
         if id is None:
             return Response({"detail": "Payment id is required unless q is provided."}, status=400)
 
-        payment = get_object_or_404(Payment, id=id)
+        payment = get_institute_scoped_object_or_404(Payment, request, id=id)
         serializer = PaymentSerializer(payment)
         return Response(serializer.data, status=200)
 
@@ -332,11 +346,12 @@ class MarkListCreateAPIView(APIView):
     def get(self, request, id=None):
         """Get all marks or a specific mark by id"""
         if id:
-            mark = get_object_or_404(Mark, id=id)
+            mark = get_institute_scoped_object_or_404(Mark, request, id=id)
             serializer = MarkSerializer(mark)
             return Response(serializer.data)
         
         marks = Mark.objects.all().order_by('-id')
+        marks = InstituteFilterBackend().filter_queryset(request, marks, None)
         serializer = MarkSerializer(marks, many=True)
         return Response(serializer.data)
 
@@ -344,6 +359,9 @@ class MarkListCreateAPIView(APIView):
         """Create a new mark"""
         serializer = MarkSerializer(data=request.data)
         if serializer.is_valid():
+            # Validate that the student and exam belong to the same institute
+            student = get_institute_scoped_object_or_404(UserData, request, id=serializer.validated_data['student'].id, user_type='student')
+            exam = get_institute_scoped_object_or_404(Exam, request, id=serializer.validated_data['exam'].id)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -354,7 +372,7 @@ class MarkUpdateAPIView(APIView):
 
     def patch(self, request, id):
         """Update a mark (partial update)"""
-        mark = get_object_or_404(Mark, id=id)
+        mark = get_institute_scoped_object_or_404(Mark, request, id=id)
         serializer = MarkSerializer(mark, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -363,7 +381,7 @@ class MarkUpdateAPIView(APIView):
 
     def put(self, request, id):
         """Update a mark (full update)"""
-        mark = get_object_or_404(Mark, id=id)
+        mark = get_institute_scoped_object_or_404(Mark, request, id=id)
         serializer = MarkSerializer(mark, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -372,7 +390,7 @@ class MarkUpdateAPIView(APIView):
 
     def delete(self, request, id):
         """Delete a mark"""
-        mark = get_object_or_404(Mark, id=id)
+        mark = get_institute_scoped_object_or_404(Mark, request, id=id)
         mark.delete()
         return Response({"message": "Mark deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
@@ -386,7 +404,10 @@ class MarkByStudentAPIView(APIView):
         if request.user.user_type == 'student' and request.user.id != student_id:
             return Response({"error": "You can only view your own marks"}, status=status.HTTP_403_FORBIDDEN)
 
-        marks = Mark.objects.filter(student_id=student_id).order_by('-id')
+        # Validate that the student exists in the requesting user's institute scope
+        student = get_institute_scoped_object_or_404(UserData, request, id=student_id, user_type='student')
+        marks = Mark.objects.filter(student=student).order_by('-id')
+        marks = InstituteFilterBackend().filter_queryset(request, marks, None)
 
         if not marks.exists():
             return Response(
@@ -403,7 +424,10 @@ class MarkBySubjectAPIView(APIView):
 
     def get(self, request, subject_id):
         """Get all marks for a specific subject"""
-        marks = Mark.objects.filter(subject_id=subject_id).order_by('-id')
+        # Validate subject scope
+        subject = get_institute_scoped_object_or_404(Subject, request, id=subject_id)
+        marks = Mark.objects.filter(subject=subject).order_by('-id')
+        marks = InstituteFilterBackend().filter_queryset(request, marks, None)
         
         if not marks.exists():
             return Response(
@@ -421,16 +445,20 @@ class InstituteView(APIView):
     def get(self, request, id=None):
         """Get all institutes or a specific institute by id"""
         if id:
-            institute = get_object_or_404(Institute, id=id)
+            institute = get_institute_scoped_object_or_404(Institute, request, id=id)
             serializer = InstituteSerializer(institute)
             return Response(serializer.data)
         
         institutes = Institute.objects.all()
+        institutes = InstituteFilterBackend().filter_queryset(request, institutes, None)
         serializer = InstituteSerializer(institutes, many=True)
         return Response(serializer.data)
 
     def post(self, request):
         """Create a new institute"""
+        # Allow superusers to create institutes
+        if not request.user.is_superuser:
+            return Response({"error": "Only superusers can create new institutes."}, status=status.HTTP_403_FORBIDDEN)
         serializer = InstituteSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -439,7 +467,7 @@ class InstituteView(APIView):
 
     def patch(self, request, id):
         """Update an institute (partial update)"""
-        institute = get_object_or_404(Institute, id=id)
+        institute = get_institute_scoped_object_or_404(Institute, request, id=id)
         serializer = InstituteSerializer(institute, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -448,7 +476,7 @@ class InstituteView(APIView):
 
     def put(self, request, id):
         """Update an institute (full update)"""
-        institute = get_object_or_404(Institute, id=id)
+        institute = get_institute_scoped_object_or_404(Institute, request, id=id)
         serializer = InstituteSerializer(institute, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -457,7 +485,10 @@ class InstituteView(APIView):
 
     def delete(self, request, id):
         """Delete an institute"""
-        institute = get_object_or_404(Institute, id=id)
+        # Allow superusers to delete institutes
+        if not request.user.is_superuser:
+            return Response({"error": "Only superusers can delete institutes."}, status=status.HTTP_403_FORBIDDEN)
+        institute = get_institute_scoped_object_or_404(Institute, request, id=id)
         institute.delete()
         return Response({"message": "Institute deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
@@ -467,11 +498,12 @@ class ExamListCreateAPIView(APIView):
 
     def get(self, request, id=None):
         if id:
-            exam = get_object_or_404(Exam, id=id, is_deleted=False)
+            exam = get_institute_scoped_object_or_404(Exam, request, id=id, is_deleted=False)
             serializer = ExamSerializer(exam)
             return Response(serializer.data)
         user = request.user
         exams = Exam.objects.filter(is_deleted=False).order_by('-id')
+        exams = InstituteFilterBackend().filter_queryset(request, exams, None)
         
         if user.user_type == 'teacher':
             exams = exams.filter(subject__teacher=user)
@@ -496,7 +528,7 @@ class ExamListCreateAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, id):
-        exam = get_object_or_404(Exam, id=id, is_deleted=False)
+        exam = get_institute_scoped_object_or_404(Exam, request, id=id, is_deleted=False)
         serializer = ExamSerializer(exam, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -504,7 +536,7 @@ class ExamListCreateAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, id):
-        exam = get_object_or_404(Exam, id=id, is_deleted=False)
+        exam = get_institute_scoped_object_or_404(Exam, request, id=id, is_deleted=False)
         exam.is_deleted = True
         exam.save()
         return Response({"message": "Exam deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
@@ -513,8 +545,9 @@ class ExamAnalyticsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, exam_id):
-        exam = get_object_or_404(Exam, id=exam_id, is_deleted=False)
+        exam = get_institute_scoped_object_or_404(Exam, request, id=exam_id, is_deleted=False)
         marks = Mark.objects.filter(exam=exam)
+        marks = InstituteFilterBackend().filter_queryset(request, marks, None)
         
         total_students = marks.count()
         if total_students == 0:
@@ -560,13 +593,14 @@ class ExamMarksAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, exam_id):
-        exam = get_object_or_404(Exam, id=exam_id, is_deleted=False)
+        exam = get_institute_scoped_object_or_404(Exam, request, id=exam_id, is_deleted=False)
         marks = Mark.objects.filter(exam=exam)
+        marks = InstituteFilterBackend().filter_queryset(request, marks, None)
         serializer = MarkSerializer(marks, many=True)
         return Response(serializer.data)
 
     def post(self, request, exam_id):
-        exam = get_object_or_404(Exam, id=exam_id, is_deleted=False)
+        exam = get_institute_scoped_object_or_404(Exam, request, id=exam_id, is_deleted=False)
         serializer = BulkMarkSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -577,7 +611,7 @@ class ExamMarksAPIView(APIView):
             student_id = item.get('student_id')
             obtained = item.get('obtained_mark')
             
-            student = get_object_or_404(UserData, id=student_id, user_type='student')
+            student = get_institute_scoped_object_or_404(UserData, request, id=student_id, user_type='student')
             
             mark, created = Mark.objects.get_or_create(
                 exam=exam,
@@ -604,6 +638,8 @@ class StudentExamListAPIView(APIView):
             exams = Exam.objects.filter(batch__in=student_batches, is_deleted=False).order_by('-id')
         else:
             exams = Exam.objects.filter(is_deleted=False).order_by('-id')
+
+        exams = InstituteFilterBackend().filter_queryset(request, exams, None)
 
         results = []
         for exam in exams:
@@ -642,7 +678,7 @@ class StudentExamAnalyticsAPIView(APIView):
 
     def get(self, request, exam_id):
         student = request.user
-        exam = get_object_or_404(Exam, id=exam_id, is_deleted=False)
+        exam = get_institute_scoped_object_or_404(Exam, request, id=exam_id, is_deleted=False)
         
         mark = Mark.objects.filter(exam=exam, student=student).first()
 

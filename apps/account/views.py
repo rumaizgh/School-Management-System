@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from apps.account.filters import get_institute_scoped_object_or_404
 from rest_framework.views import APIView
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -126,7 +127,7 @@ class CreateStudent(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
     
     def patch(self, request, id):
-        user = get_object_or_404(UserData, id=id, user_type="student")
+        user = get_institute_scoped_object_or_404(UserData, request, id=id, user_type="student")
 
         serializer = UserCreateSerializer(
             user,
@@ -141,7 +142,7 @@ class CreateStudent(APIView):
         return Response(serializer.errors)
     
     def delete(self, request, id):
-        user = get_object_or_404(UserData, id=id, user_type="student")
+        user = get_institute_scoped_object_or_404(UserData, request, id=id, user_type="student")
 
         if not user.is_active:
             return Response(
@@ -168,7 +169,7 @@ class CreateTeacher(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
     
     def patch(self, request, id):
-        user = get_object_or_404(UserData, id=id, user_type="teacher")
+        user = get_institute_scoped_object_or_404(UserData, request, id=id, user_type="teacher")
 
         serializer = UserCreateSerializer(
             user,
@@ -183,7 +184,7 @@ class CreateTeacher(APIView):
         return Response(serializer.errors)
     
     def delete(self, request, id):
-        user = get_object_or_404(UserData, id=id, user_type="teacher")
+        user = get_institute_scoped_object_or_404(UserData, request, id=id, user_type="teacher")
 
         if not user.is_active:
             return Response(
