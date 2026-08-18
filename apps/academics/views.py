@@ -28,7 +28,7 @@ class CreateClass(APIView):
     def post(self,request):
         serializer=BatchSerializer(data = request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(institute=request.user.institute)
             return Response(serializer.data,  status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -128,7 +128,7 @@ class TimeTablesView(APIView):
     def post(self, request):
         serializer = TimeTableSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(institute=request.user.institute)
             return Response(serializer.data,  status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -189,7 +189,7 @@ class FeeListCreateAPIView(APIView):
     def post(self, request):
         serializer = FeeSerializer(data=request.data)
         if serializer.is_valid():
-            fee = serializer.save()
+            fee = serializer.save(institute=request.user.institute)
 
             if fee.student.user_type != "student":
                 return Response(
@@ -491,7 +491,7 @@ class ExamListCreateAPIView(APIView):
     def post(self, request):
         serializer = ExamSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(institute=request.user.institute)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
