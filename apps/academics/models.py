@@ -85,7 +85,7 @@ class TimeTable(models.Model):
     is_exam = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.start_time} - {self.end_time}"
+        return f"{self.start_time} - {self.end_time} ({self.classs})"
 
 class Exam(models.Model):
     institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='exams', null=True, blank=True)

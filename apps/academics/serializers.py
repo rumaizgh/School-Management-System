@@ -176,6 +176,19 @@ class ExamSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'pass_mark': 'pass_mark cannot be negative.'})
             if total is not None and pass_mark > total:
                 raise serializers.ValidationError({'pass_mark': 'pass_mark cannot be greater than total_mark.'})
+
+        timetable = data.get('timetable') if 'timetable' in data else (self.instance.timetable if getattr(self, 'instance', None) else None)
+        if timetable:
+            qs = Exam.objects.filter(timetable=timetable, is_deleted=False)
+            if getattr(self, 'instance', None) and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({'timetable': 'This timetable is already assigned to another exam.'})
+
+            batch = data.get('batch') if 'batch' in data else (self.instance.batch if getattr(self, 'instance', None) else None)
+            if batch and timetable.classs != batch:
+                raise serializers.ValidationError({'timetable': 'Selected timetable class does not match the exam batch.'})
+
         return data
 
 class ExamAnalyticsSerializer(serializers.Serializer):
