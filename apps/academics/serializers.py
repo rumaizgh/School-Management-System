@@ -76,6 +76,8 @@ class TimeTableSerializer(serializers.ModelSerializer):
     teacher_name = serializers.CharField(source='teacher.name', read_only=True)
     subject_name = serializers.CharField(source='subject.subject_name', read_only=True)
     classs_name = serializers.CharField(source='classs.classs', read_only=True)
+    session = serializers.SerializerMethodField()
+
     class Meta:
         model = TimeTable
         fields = [
@@ -88,7 +90,21 @@ class TimeTableSerializer(serializers.ModelSerializer):
             'start_time',
             'end_time',
             'is_exam',
+            'session',
         ]
+
+    def get_session(self, obj):
+        sessions = list(obj.sessions.all())
+        if sessions:
+            return sessions[0].id
+        from apps.attendance.models import AttendanceSession
+        session_obj = AttendanceSession.objects.filter(
+            teacher=obj.teacher,
+            classs=obj.classs,
+            date=obj.date,
+            time=obj.start_time
+        ).first()
+        return session_obj.id if session_obj else None
 
 class PaymentSerializer(serializers.ModelSerializer):
     student = serializers.SerializerMethodField()

@@ -127,6 +127,7 @@ class TimeTablesView(APIView):
             timetables = timetables.filter(is_exam=is_exam_bool)
 
         timetables = InstituteFilterBackend().filter_queryset(request, timetables, None)
+        timetables = timetables.prefetch_related('sessions')
         serializer = TimeTableSerializer(timetables, many=True)
         return Response(serializer.data)
     
