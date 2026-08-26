@@ -179,10 +179,26 @@ class MarkSerializer(serializers.ModelSerializer):
 class ExamSerializer(serializers.ModelSerializer):
     batch_name = serializers.CharField(source='batch.classs', read_only=True)
     subject_name = serializers.CharField(source='subject.subject_name', read_only=True)
+    session = serializers.SerializerMethodField()
 
     class Meta:
         model = Exam
-        fields = ['id', 'exam_name', 'batch', 'batch_name', 'subject', 'subject_name', 'timetable', 'total_mark', 'pass_mark', 'question_paper']
+        fields = ['id', 'exam_name', 'batch', 'batch_name', 'subject', 'subject_name', 'timetable', 'session', 'total_mark', 'pass_mark', 'question_paper']
+
+    def get_session(self, obj):
+        if not obj.timetable:
+            return None
+        sessions = list(obj.timetable.sessions.all())
+        if sessions:
+            return sessions[0].id
+        from apps.attendance.models import AttendanceSession
+        session_obj = AttendanceSession.objects.filter(
+            teacher=obj.timetable.teacher,
+            classs=obj.timetable.classs,
+            date=obj.timetable.date,
+            time=obj.timetable.start_time
+        ).first()
+        return session_obj.id if session_obj else None
 
     def validate(self, data):
         total = data.get('total_mark') if data.get('total_mark') is not None else (self.instance.total_mark if getattr(self, 'instance', None) else None)
