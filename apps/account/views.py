@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
-from apps.account.filters import get_institute_scoped_object_or_404
+from django.http import HttpResponse
+from apps.account.filters import get_institute_scoped_object_or_404, InstituteFilterBackend
 from rest_framework.views import APIView
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -16,6 +17,7 @@ from apps.academics.permissions import IsAdmin,IsTeacherOrAdmin
 from rest_framework.generics import ListAPIView
 from .pagination import CustomPagination
 from django.db.models import Count, Q
+from .resources import UserDataResource
 
 class DashboardCountAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -208,7 +210,8 @@ class SearchStudent(ListAPIView):
         return UserData.objects.filter(
             Q(name__icontains=query) |
             Q(email__icontains=query) |
-            Q(phone__icontains=query),
+            Q(phone__icontains=query) |
+            Q(roll_no__icontains=query),
             user_type="student",
             is_active=True
         )
@@ -225,3 +228,45 @@ class SearchTeacher(ListAPIView):
             user_type="teacher",
             is_active=True
         )
+
+
+class ExportTeachers(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        teachers = UserData.objects.filter(user_type='teacher', is_active=True).prefetch_related('subject', 'classs', 'institute')
+        teachers = InstituteFilterBackend().filter_queryset(request, teachers, None)
+
+        resource = UserDataResource()
+        dataset = resource.export(queryset=teachers)
+
+        response = HttpResponse(
+            dataset.export('xlsx'),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="teachers.xlsx"'
+        return response
+
+
+class ExportStudents(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        batch_id = request.GET.get('batch_id') or request.GET.get('class_id')
+        students = UserData.objects.filter(user_type='student', is_active=True).prefetch_related('subject', 'classs', 'institute')
+
+        if batch_id:
+            students = students.filter(classs__id=batch_id)
+
+        students = InstituteFilterBackend().filter_queryset(request, students, None)
+
+        resource = UserDataResource()
+        dataset = resource.export(queryset=students)
+
+        response = HttpResponse(
+            dataset.export('xlsx'),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        filename = f"students_batch_{batch_id}.xlsx" if batch_id else "students.xlsx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response

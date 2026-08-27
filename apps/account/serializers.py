@@ -80,6 +80,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "email": {"required": False, "allow_null": True, "allow_blank": True},
             "parent_name": {"required": False, "allow_null": True, "allow_blank": True},
             "parent_contact": {"required": False, "allow_null": True, "allow_blank": True},
+            "roll_no": {"required": False, "allow_null": True, "allow_blank": True},
             "date_of_birth": {"required": False, "allow_null": True},
             "phone" : {"required" : True},
             "user_type": {"required": False}
