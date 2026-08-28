@@ -15,8 +15,9 @@ from apps.account.models import UserData
 from apps.academics.models import TimeTable
 from apps.subject.models import Subject
 from .resources import FeeResource
-from django.http import HttpResponse
-from django.db.models import Count, Q, Sum, Avg, Max, Min
+from django.db.models import Count, Q, Sum, Avg, Max, Min, F, Value, DecimalField
+from django.db.models.functions import Coalesce
+from django.utils import timezone
 from apps.account.pagination import CustomPagination
 
 
@@ -69,19 +70,44 @@ class ViewAllClassTeacher(APIView):
         serializer = BatchSerializer(classs,many=True)
         return Response(serializer.data)
     
+def apply_user_filters_and_ordering(users, request):
+    gender = request.GET.get('gender')
+    if gender:
+        users = users.filter(gender__iexact=gender)
+
+    ordering = request.GET.get('ordering')
+    if ordering:
+        ordering_map = {
+            'created_at': 'date_joined',
+            '-created_at': '-date_joined',
+            'name': 'name',
+            '-name': '-name',
+            'first_name': 'name',
+            '-first_name': '-name',
+            'id': 'id',
+            '-id': '-id',
+        }
+        users = users.order_by(ordering_map.get(ordering, ordering))
+    else:
+        users = users.order_by('-id')
+
+    return users
+
 class ViewStudentsByClass(APIView):
     def get(self, request, id):
         classs = get_institute_scoped_object_or_404(Batch, request, id=id)
-        students = UserData.objects.filter(classs=classs, user_type="student", is_active = True)
+        students = UserData.objects.filter(classs=classs, user_type="student", is_active=True)
         students = InstituteFilterBackend().filter_queryset(request, students, None)
+        students = apply_user_filters_and_ordering(students, request)
         serializer = UserDataSerializer(students, many=True)
         return Response(serializer.data)
-    
+
 class ViewTeachersByClass(APIView):
     def get(self, request, id):
         classs = get_institute_scoped_object_or_404(Batch, request, id=id)
-        teachers = UserData.objects.filter(classs=classs, user_type="teacher", is_active = True)
+        teachers = UserData.objects.filter(classs=classs, user_type="teacher", is_active=True)
         teachers = InstituteFilterBackend().filter_queryset(request, teachers, None)
+        teachers = apply_user_filters_and_ordering(teachers, request)
         serializer = UserDataSerializer(teachers, many=True)
         return Response(serializer.data)
      
@@ -183,6 +209,51 @@ class PaymentListCreateAPIView(APIView):
 
         return Response(serializer.errors, status=400)
     
+def apply_fee_filters_and_ordering(fees, request):
+    gender = request.GET.get('gender')
+    if gender:
+        fees = fees.filter(student__gender__iexact=gender)
+
+    status_param = request.GET.get('status')
+    if status_param:
+        fees = fees.annotate(
+            total_paid_sum=Coalesce(
+                Sum('payments__amount'),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        )
+        today = timezone.localdate()
+        status_lower = status_param.lower()
+        if status_lower == 'paid':
+            fees = fees.filter(total_paid_sum__gte=F('amount'))
+        elif status_lower == 'overdue':
+            fees = fees.filter(total_paid_sum__lt=F('amount'), due_date__lt=today)
+        elif status_lower == 'pending':
+            fees = fees.filter(total_paid_sum__lt=F('amount'), due_date__gte=today)
+
+    ordering = request.GET.get('ordering')
+    if ordering:
+        ordering_map = {
+            'amount': 'amount',
+            '-amount': '-amount',
+            'name': 'student__name',
+            '-name': '-student__name',
+            'first_name': 'student__name',
+            '-first_name': '-student__name',
+            'created_at': 'id',
+            '-created_at': '-id',
+            'id': 'id',
+            '-id': '-id',
+            'due_date': 'due_date',
+            '-due_date': '-due_date',
+        }
+        fees = fees.order_by(ordering_map.get(ordering, ordering))
+    else:
+        fees = fees.order_by('-id')
+
+    return fees
+
+
 class FeeListCreateAPIView(APIView):
 
     def get(self, request, id=None):
@@ -190,8 +261,9 @@ class FeeListCreateAPIView(APIView):
             fees = get_institute_scoped_object_or_404(Fee, request, id=id, student__user_type="student")
             serializer = FeeSerializer(fees)
             return Response(serializer.data)
-        fees = Fee.objects.all().order_by("-id")
+        fees = Fee.objects.all()
         fees = InstituteFilterBackend().filter_queryset(request, fees, None)
+        fees = apply_fee_filters_and_ordering(fees, request)
         serializer = FeeSerializer(fees, many=True)
         return Response(serializer.data)
 
@@ -220,6 +292,7 @@ class ViewFee(APIView):
     def get(self, request, classs_id):
         fees = Fee.objects.filter(batch=classs_id)
         fees = InstituteFilterBackend().filter_queryset(request, fees, None)
+        fees = apply_fee_filters_and_ordering(fees, request)
 
         if not fees.exists():
             return Response(
@@ -271,11 +344,12 @@ class ViewFeeByStudent(APIView):
             fees = Fee.objects.filter(
                 student_id=student_id,
                 student__user_type="student"
-            ).order_by("-id")
+            )
         else:
-            fees = Fee.objects.all().order_by("-id")
+            fees = Fee.objects.all()
 
         fees = InstituteFilterBackend().filter_queryset(request, fees, None)
+        fees = apply_fee_filters_and_ordering(fees, request)
         serializer = FeeSerializer(fees, many=True)
         return Response(serializer.data)
 

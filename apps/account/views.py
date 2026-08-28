@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from apps.account.filters import get_institute_scoped_object_or_404, InstituteFilterBackend
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework import status
@@ -88,28 +89,71 @@ class ViewAllTeachers(ListAPIView):
 
     def get_queryset(self):
         queryset = UserData.objects.filter(user_type='teacher', is_active=True)
+        queryset = InstituteFilterBackend().filter_queryset(self.request, queryset, self)
 
         id = self.kwargs.get('id')
         if id:
             queryset = queryset.filter(id=id)
 
+        gender = self.request.GET.get('gender')
+        if gender:
+            queryset = queryset.filter(gender__iexact=gender)
+
+        ordering = self.request.GET.get('ordering')
+        if ordering:
+            ordering_map = {
+                'created_at': 'date_joined',
+                '-created_at': '-date_joined',
+                'name': 'name',
+                '-name': '-name',
+                'first_name': 'name',
+                '-first_name': '-name',
+                'id': 'id',
+                '-id': '-id',
+            }
+            queryset = queryset.order_by(ordering_map.get(ordering, ordering))
+        else:
+            queryset = queryset.order_by('-id')
+
         return queryset
-    
+
 class ViewAllStudents(ListAPIView):
     serializer_class = UserDataSerializer
     pagination_class = CustomPagination
 
     def get_queryset(self):
         queryset = UserData.objects.filter(user_type='student', is_active=True)
+        queryset = InstituteFilterBackend().filter_queryset(self.request, queryset, self)
 
         id = self.kwargs.get('id')
         if id:
             queryset = queryset.filter(id=id)
 
+        gender = self.request.GET.get('gender')
+        if gender:
+            queryset = queryset.filter(gender__iexact=gender)
+
+        ordering = self.request.GET.get('ordering')
+        if ordering:
+            ordering_map = {
+                'created_at': 'date_joined',
+                '-created_at': '-date_joined',
+                'name': 'name',
+                '-name': '-name',
+                'first_name': 'name',
+                '-first_name': '-name',
+                'id': 'id',
+                '-id': '-id',
+            }
+            queryset = queryset.order_by(ordering_map.get(ordering, ordering))
+        else:
+            queryset = queryset.order_by('-id')
+
         return queryset
     
 class CreateStudent(APIView):
     permission_classes = [IsAuthenticated,IsAdmin]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self,request):
         user = request.user
@@ -162,6 +206,7 @@ class CreateStudent(APIView):
     
 class CreateTeacher(APIView):
     permission_classes = [IsAuthenticated,IsAdmin]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     def post(self,request):
         serializer = UserCreateSerializer(data=request.data)

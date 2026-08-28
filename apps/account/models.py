@@ -35,7 +35,6 @@ class UserData(AbstractUser):
         ('admin', 'Admin'),
         ('superadmin', 'Superadmin')
     ]
-
     username = None
     password = models.CharField(max_length=128, null=True, blank=True)
     user_type = models.CharField(max_length=10, choices=CHOICES)
@@ -52,6 +51,8 @@ class UserData(AbstractUser):
     parent_name = models.CharField(max_length=100, null=True, blank=True)
     parent_contact = models.CharField(max_length=15, null=True, blank=True)
     roll_no = models.CharField(max_length=50, blank=True, null=True)
+    profile = models.ImageField(upload_to='profiles/', null=True, blank=True)
+    gender = models.CharField(max_length=20, null=True, blank=True)
     subject = models.ManyToManyField(
         'subject.Subject',
         related_name="teachers",

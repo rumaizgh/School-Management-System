@@ -67,6 +67,11 @@ class UserDataSerializer(serializers.ModelSerializer):
 
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
+    gender = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
     subject = serializers.PrimaryKeyRelatedField(
         queryset=Subject.objects.all(),
         many=True,
@@ -81,6 +86,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "parent_name": {"required": False, "allow_null": True, "allow_blank": True},
             "parent_contact": {"required": False, "allow_null": True, "allow_blank": True},
             "roll_no": {"required": False, "allow_null": True, "allow_blank": True},
+            "profile": {"required": False, "allow_null": True},
             "date_of_birth": {"required": False, "allow_null": True},
             "phone" : {"required" : True},
             "user_type": {"required": False}

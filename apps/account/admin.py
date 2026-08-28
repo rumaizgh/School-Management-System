@@ -6,6 +6,5 @@ from .resources import UserDataResource
 @admin.register(UserData)
 class UserDataAdmin(ImportExportModelAdmin):
     resource_classes = [UserDataResource]
-    list_display = ('roll_no', 'email', 'name', 'user_type', 'institute')
-    search_fields = ('roll_no', 'name', 'email', 'phone')
+    list_display = ('email', 'name','gender', 'user_type', 'profile', 'institute')
 
