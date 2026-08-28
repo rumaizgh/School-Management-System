@@ -14,7 +14,8 @@ from rest_framework import status
 from apps.account.models import UserData
 from apps.academics.models import TimeTable
 from apps.subject.models import Subject
-from .resources import FeeResource
+from .resources import FeeResource, MarkResource
+from django.http import HttpResponse
 from django.db.models import Count, Q, Sum, Avg, Max, Min, F, Value, DecimalField
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -350,7 +351,24 @@ class ViewFeeByStudent(APIView):
 
         fees = InstituteFilterBackend().filter_queryset(request, fees, None)
         fees = apply_fee_filters_and_ordering(fees, request)
-        serializer = FeeSerializer(fees, many=True)
+        serializer = FeeSerializer(fees, many=True, context={'request': request})
+        return Response(serializer.data)
+
+class LatestAssignedFeesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get latest 10 students with assigned fees"""
+        limit = request.GET.get('limit', 10)
+        try:
+            limit = int(limit)
+        except ValueError:
+            limit = 10
+
+        fees = Fee.objects.filter(student__user_type="student").select_related('student', 'batch')
+        fees = InstituteFilterBackend().filter_queryset(request, fees, None)
+        fees = fees.order_by('-id')[:limit]
+        serializer = FeeSerializer(fees, many=True, context={'request': request})
         return Response(serializer.data)
 
 class ExportFee(APIView):
@@ -395,6 +413,75 @@ class FeeExportPreview(APIView):
             "data": dataset.dict
         })
 
+class ExportMark(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, exam_id=None):
+        exam_id = exam_id or request.GET.get('exam_id')
+        batch_id = request.GET.get('batch_id')
+        subject_id = request.GET.get('subject_id')
+        file_format = request.GET.get('format', 'xlsx').lower()
+
+        marks = Mark.objects.select_related('exam', 'student', 'exam__batch', 'exam__subject').all()
+
+        if exam_id:
+            marks = marks.filter(exam_id=exam_id)
+        if batch_id:
+            marks = marks.filter(exam__batch_id=batch_id)
+        if subject_id:
+            marks = marks.filter(exam__subject_id=subject_id)
+
+        marks = InstituteFilterBackend().filter_queryset(request, marks, None)
+        dataset = MarkResource().export(queryset=marks)
+
+        if file_format == 'csv':
+            content_type = 'text/csv'
+            export_data = dataset.export('csv')
+            ext = 'csv'
+        else:
+            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            export_data = dataset.export('xlsx')
+            ext = 'xlsx'
+
+        response = HttpResponse(export_data, content_type=content_type)
+        if exam_id:
+            filename = f"marks_exam_{exam_id}.{ext}"
+        elif batch_id:
+            filename = f"marks_batch_{batch_id}.{ext}"
+        else:
+            filename = f"marks_all.{ext}"
+
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+
+class MarkExportPreview(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, exam_id=None):
+        exam_id = exam_id or request.GET.get('exam_id')
+        batch_id = request.GET.get('batch_id')
+        subject_id = request.GET.get('subject_id')
+
+        marks = Mark.objects.select_related('exam', 'student', 'exam__batch', 'exam__subject').all()
+
+        if exam_id:
+            marks = marks.filter(exam_id=exam_id)
+        if batch_id:
+            marks = marks.filter(exam__batch_id=batch_id)
+        if subject_id:
+            marks = marks.filter(exam__subject_id=subject_id)
+
+        marks = InstituteFilterBackend().filter_queryset(request, marks, None)
+        resource = MarkResource()
+        dataset = resource.export(queryset=marks)
+
+        return Response({
+            "status": True,
+            "count": marks.count(),
+            "data": dataset.dict
+        })
+
 class SearchPaymentHistory(APIView):
 
     def get(self, request, id=None):
@@ -422,12 +509,12 @@ class MarkListCreateAPIView(APIView):
         """Get all marks or a specific mark by id"""
         if id:
             mark = get_institute_scoped_object_or_404(Mark, request, id=id)
-            serializer = MarkSerializer(mark)
+            serializer = MarkSerializer(mark, context={'request': request})
             return Response(serializer.data)
         
         marks = Mark.objects.all().order_by('-id')
         marks = InstituteFilterBackend().filter_queryset(request, marks, None)
-        serializer = MarkSerializer(marks, many=True)
+        serializer = MarkSerializer(marks, many=True, context={'request': request})
         return Response(serializer.data)
 
     def post(self, request):
@@ -490,7 +577,7 @@ class MarkByStudentAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = MarkSerializer(marks, many=True)
+        serializer = MarkSerializer(marks, many=True, context={'request': request})
         return Response(serializer.data)
 
 
@@ -510,7 +597,7 @@ class MarkBySubjectAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        serializer = MarkSerializer(marks, many=True)
+        serializer = MarkSerializer(marks, many=True, context={'request': request})
         return Response(serializer.data)
 
 
@@ -671,7 +758,7 @@ class ExamMarksAPIView(APIView):
         exam = get_institute_scoped_object_or_404(Exam, request, id=exam_id, is_deleted=False)
         marks = Mark.objects.filter(exam=exam)
         marks = InstituteFilterBackend().filter_queryset(request, marks, None)
-        serializer = MarkSerializer(marks, many=True)
+        serializer = MarkSerializer(marks, many=True, context={'request': request})
         return Response(serializer.data)
 
     def post(self, request, exam_id):

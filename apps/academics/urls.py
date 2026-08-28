@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,ExportFee,FeeExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksAPIView, StudentExamListAPIView, StudentExamAnalyticsAPIView
+from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,LatestAssignedFeesAPIView,ExportFee,FeeExportPreview,ExportMark,MarkExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksAPIView, StudentExamListAPIView, StudentExamAnalyticsAPIView
 from django.urls import path, include
 
 router = DefaultRouter()
@@ -14,6 +14,7 @@ urlpatterns = [
     path('class/teachers/<int:id>/', ViewTeachersByClass.as_view()),
     path('payments/', PaymentListCreateAPIView.as_view()),
     path('fee/', FeeListCreateAPIView.as_view()),
+    path('fee/latest/', LatestAssignedFeesAPIView.as_view(), name='latest-assigned-fees'),
     path('fee/<int:id>/', FeeListCreateAPIView.as_view()),
     path('fee/student/<int:student_id>/', ViewFeeByStudent.as_view()),
     path('fee/classs/<int:classs_id>/', ViewFee.as_view()),
@@ -25,6 +26,8 @@ urlpatterns = [
     path('payment/<int:student_id>/', CreatePayment.as_view(), name='getpayment'),
     path('export-fees/', ExportFee.as_view(), name='export-fees'),
     path('export-fees-preview/', FeeExportPreview.as_view(), name='export-fees-preview'),
+    path('export-marks/', ExportMark.as_view(), name='export-marks'),
+    path('export-marks-preview/', MarkExportPreview.as_view(), name='export-marks-preview'),
     path('payment/search/', SearchPaymentHistory.as_view(), name='search-payment-history'),
     path('payment/search/<int:id>/', SearchPaymentHistory.as_view(), name='search-payment-history'),
     path('marks/', MarkListCreateAPIView.as_view(), name='marks-list-create'),
@@ -38,4 +41,5 @@ urlpatterns = [
     path('exams/<int:exam_id>/analytics/', ExamAnalyticsAPIView.as_view(), name='exam-analytics'),
     path('exams/<int:exam_id>/marks/', ExamMarksAPIView.as_view(), name='exam-marks-list'),
     path('exams/<int:exam_id>/marks/bulk/', ExamMarksAPIView.as_view(), name='exam-marks-bulk'),
+    path('exams/<int:exam_id>/export/', ExportMark.as_view(), name='exam-export-marks'),
 ]
