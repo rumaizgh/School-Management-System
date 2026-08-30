@@ -358,18 +358,15 @@ class LatestAssignedFeesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Get latest 10 students with assigned fees"""
-        limit = request.GET.get('limit', 10)
-        try:
-            limit = int(limit)
-        except ValueError:
-            limit = 10
-
+        """Get all students with assigned fees paginated"""
         fees = Fee.objects.filter(student__user_type="student").select_related('student', 'batch')
         fees = InstituteFilterBackend().filter_queryset(request, fees, None)
-        fees = fees.order_by('-id')[:limit]
-        serializer = FeeSerializer(fees, many=True, context={'request': request})
-        return Response(serializer.data)
+        fees = fees.order_by('-id')
+
+        paginator = CustomPagination()
+        paginated_fees = paginator.paginate_queryset(fees, request)
+        serializer = FeeSerializer(paginated_fees, many=True, context={'request': request})
+        return paginator.get_paginated_response(serializer.data)
 
 class ExportFee(APIView):
     def get(self, request):
@@ -445,11 +442,16 @@ class ExportMark(APIView):
 
         response = HttpResponse(export_data, content_type=content_type)
         if exam_id:
-            filename = f"marks_exam_{exam_id}.{ext}"
+            exam_obj = Exam.objects.filter(id=exam_id).first()
+            if exam_obj and exam_obj.exam_name:
+                safe_exam_name = "".join(c if c.isalnum() or c in ('_', '-') else '_' for c in exam_obj.exam_name.strip())
+                filename = f"marklist_{safe_exam_name}.{ext}"
+            else:
+                filename = f"marklist_exam_{exam_id}.{ext}"
         elif batch_id:
-            filename = f"marks_batch_{batch_id}.{ext}"
+            filename = f"marklist_batch_{batch_id}.{ext}"
         else:
-            filename = f"marks_all.{ext}"
+            filename = f"marklist_all.{ext}"
 
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response

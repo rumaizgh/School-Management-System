@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,LatestAssignedFeesAPIView,ExportFee,FeeExportPreview,ExportMark,MarkExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksAPIView, StudentExamListAPIView, StudentExamAnalyticsAPIView
-from django.urls import path, include
+from django.urls import path, include, re_path
 
 router = DefaultRouter()
 
