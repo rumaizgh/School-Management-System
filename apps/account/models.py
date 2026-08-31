@@ -52,14 +52,13 @@ class UserData(AbstractUser):
         ('female', 'Female'),
         ('other', 'Other')
     ]
-    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True)
+    gender = models.CharField(max_length=20, choices=GENDER_CHOICES, null=True, blank=True)
     date_of_birth = models.DateField(blank=True, null=True)
     roll_number = models.CharField(max_length=20, null=True, blank=True)
     parent_name = models.CharField(max_length=100, null=True, blank=True)
     parent_contact = models.CharField(max_length=15, null=True, blank=True)
     roll_no = models.CharField(max_length=50, blank=True, null=True)
     profile = models.ImageField(upload_to='profiles/', null=True, blank=True)
-    gender = models.CharField(max_length=20, null=True, blank=True)
     subject = models.ManyToManyField(
         'subject.Subject',
         related_name="teachers",
@@ -87,7 +86,13 @@ class UserData(AbstractUser):
     REQUIRED_FIELDS = []
     
     def save(self, *args, **kwargs):
-        if self.password and not self.password.startswith('pbkdf2_'):
+        if self.password and not (
+            self.password.startswith('pbkdf2_') or
+            self.password.startswith('argon2') or
+            self.password.startswith('bcrypt') or
+            self.password.startswith('!') or
+            self.password.startswith('scrypt')
+        ):
             self.password = make_password(self.password)
         super().save(*args, **kwargs)
 
