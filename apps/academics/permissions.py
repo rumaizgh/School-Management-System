@@ -10,20 +10,24 @@ class IsStudent(BasePermission):
 
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_superuser
+        return bool(
+            request.user and 
+            request.user.is_authenticated and 
+            (request.user.user_type == 'admin' or request.user.is_superuser)
+        )
 
 class IsStudentOrAdmin(BasePermission):
     def has_permission(self, request, view):
-        return (
+        return bool(
             request.user and 
             request.user.is_authenticated and 
-            (request.user.user_type == 'student' or request.user.is_superuser)
+            (request.user.user_type in ['student', 'admin'] or request.user.is_superuser)
         )
     
 class IsTeacherOrAdmin(BasePermission):
     def has_permission(self, request, view):
-        return (
+        return bool(
             request.user and 
             request.user.is_authenticated and 
-            (request.user.user_type == 'teacher' or request.user.is_superuser)
+            (request.user.user_type in ['teacher', 'admin'] or request.user.is_superuser)
         )

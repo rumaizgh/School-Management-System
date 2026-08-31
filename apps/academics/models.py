@@ -14,6 +14,7 @@ class Institute(models.Model):
 class Batch(models.Model):
     institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='batches', null=True, blank=True)
     classs = models.CharField(max_length=10)
+    section = models.CharField(max_length=10, null=True, blank=True)
 
     YEAR_CHOICES = [
         (f"{y}-{str(y+1)[-2:]}", f"{y}-{str(y+1)[-2:]}")
@@ -29,13 +30,14 @@ class Batch(models.Model):
         unique_together = ['institute', 'classs', 'year']
 
     def __str__(self):
-        return f"{self.classs}{f' ({self.year})' if self.year else ''}"
+        return f"{self.classs}{f' {self.section}' if self.section else ''}{f' ({self.year})' if self.year else ''}"
  
 class Fee(models.Model):
     institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='fees', null=True, blank=True)
     student = models.ForeignKey('account.UserData', on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.CharField(max_length=255, null=True, blank=True)
     due_date = models.DateField()
 
     def total_paid(self):
@@ -56,6 +58,24 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES, default='cash')
     paid_on = models.DateField(auto_now_add=True)
+
+class Payroll(models.Model):
+    PAYMENT_METHOD_CHOICES = [
+        ('bank', 'Bank'),
+        ('upi', 'UPI'),
+        ('cash', 'Cash'),
+    ]
+    institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='payrolls', null=True, blank=True)
+    teacher = models.ForeignKey('account.UserData', on_delete=models.CASCADE, limit_choices_to={'user_type': 'teacher'})
+    disbursement_month = models.CharField(max_length=20)
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES, default='bank')
+    transaction_id = models.CharField(max_length=100, null=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    remarks = models.TextField(null=True, blank=True)
+    created_at = models.DateField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Payroll - {self.teacher.name} ({self.disbursement_month})"
     
 class TimeTable(models.Model):
 

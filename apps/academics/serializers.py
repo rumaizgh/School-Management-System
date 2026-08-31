@@ -1,11 +1,18 @@
 from rest_framework import serializers
-from .models import Batch,Fee,TimeTable,Payment,Mark,Institute,Exam
+from .models import Batch,Fee,TimeTable,Payment,Mark,Institute,Exam,Payroll
 from apps.account.models import UserData
 from django.db.models import Count, Q, Sum
 
 class InstituteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Institute
+        fields = '__all__'
+
+class PayrollSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.name', read_only=True)
+
+    class Meta:
+        model = Payroll
         fields = '__all__'
 
 class BatchSerializer(serializers.ModelSerializer):

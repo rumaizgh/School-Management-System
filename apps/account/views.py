@@ -85,11 +85,18 @@ class LoginView(APIView):
 
 class ViewAllTeachers(ListAPIView):
     serializer_class = UserDataSerializer
-    pagination_class = CustomPagination
+    permission_classes = [IsAuthenticated]
+    # Disable pagination so the JS client receives a plain array
+    pagination_class = None
 
     def get_queryset(self):
+        user = self.request.user
         queryset = UserData.objects.filter(user_type='teacher', is_active=True)
         queryset = InstituteFilterBackend().filter_queryset(self.request, queryset, self)
+
+        # Scope to the requesting admin's institute
+        if not user.is_superuser and user.institute:
+            queryset = queryset.filter(institute=user.institute)
 
         id = self.kwargs.get('id')
         if id:
@@ -119,11 +126,18 @@ class ViewAllTeachers(ListAPIView):
 
 class ViewAllStudents(ListAPIView):
     serializer_class = UserDataSerializer
-    pagination_class = CustomPagination
+    permission_classes = [IsAuthenticated]
+    # Disable pagination so the JS client receives a plain array
+    pagination_class = None
 
     def get_queryset(self):
+        user = self.request.user
         queryset = UserData.objects.filter(user_type='student', is_active=True)
         queryset = InstituteFilterBackend().filter_queryset(self.request, queryset, self)
+
+        # Scope to the requesting admin's institute
+        if not user.is_superuser and user.institute:
+            queryset = queryset.filter(institute=user.institute)
 
         id = self.kwargs.get('id')
         if id:
@@ -249,10 +263,11 @@ class CreateTeacher(APIView):
     
 class SearchStudent(ListAPIView):
     serializer_class = UserDataSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         query = self.request.GET.get("q", "")
-        return UserData.objects.filter(
+        qs = UserData.objects.filter(
             Q(name__icontains=query) |
             Q(email__icontains=query) |
             Q(phone__icontains=query) |
@@ -260,19 +275,22 @@ class SearchStudent(ListAPIView):
             user_type="student",
             is_active=True
         )
+        return InstituteFilterBackend().filter_queryset(self.request, qs, None)
     
 class SearchTeacher(ListAPIView):
     serializer_class = UserDataSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         query = self.request.GET.get("q", "")
-        return UserData.objects.filter(
+        qs = UserData.objects.filter(
             Q(name__icontains=query) |
             Q(email__icontains=query) |
             Q(phone__icontains=query),
             user_type="teacher",
             is_active=True
         )
+<<<<<<< Updated upstream
 
 
 class ExportTeachers(APIView):
@@ -315,3 +333,6 @@ class ExportStudents(APIView):
         filename = f"students_batch_{batch_id}.xlsx" if batch_id else "students.xlsx"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
+=======
+        return InstituteFilterBackend().filter_queryset(self.request, qs, None)
+>>>>>>> Stashed changes

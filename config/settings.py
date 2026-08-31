@@ -47,7 +47,11 @@ INSTALLED_APPS = [
     'apps.subject',
     'apps.attendance',
     'apps.academics',
+<<<<<<< Updated upstream
     'apps.notifications',
+=======
+    'apps.web_admin',
+>>>>>>> Stashed changes
 ]
 
 REST_FRAMEWORK = {

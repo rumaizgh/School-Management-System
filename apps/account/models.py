@@ -47,7 +47,14 @@ class UserData(AbstractUser):
     )
     phone = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+    GENDER_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other')
+    ]
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True)
     date_of_birth = models.DateField(blank=True, null=True)
+    roll_number = models.CharField(max_length=20, null=True, blank=True)
     parent_name = models.CharField(max_length=100, null=True, blank=True)
     parent_contact = models.CharField(max_length=15, null=True, blank=True)
     roll_no = models.CharField(max_length=50, blank=True, null=True)

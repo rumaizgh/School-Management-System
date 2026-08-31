@@ -3,8 +3,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .models import Batch, Fee, Payment, Mark, Institute, Exam
-from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer,InstituteSerializer, ExamSerializer, ExamAnalyticsSerializer, BulkMarkSerializer
+from rest_framework import status, viewsets
+from .models import Batch, Fee, Payment, Mark, Institute, Exam, Payroll
+from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer,InstituteSerializer, ExamSerializer, ExamAnalyticsSerializer, BulkMarkSerializer, PayrollSerializer
 from apps.account.serializers import UserDataSerializer
 from apps.academics.serializers import TimeTableSerializer
 from .permissions import IsAdmin,IsTeacher,IsTeacherOrAdmin
@@ -902,3 +903,17 @@ class StudentExamAnalyticsAPIView(APIView):
                 "pass_percentage": pass_percentage
             }
         })
+
+class PayrollViewSet(viewsets.ModelViewSet):
+    serializer_class = PayrollSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = Payroll.objects.all().order_by('-id')
+        if not user.is_superuser and user.institute:
+            qs = qs.filter(institute=user.institute)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(institute=self.request.user.institute)

@@ -1,0 +1,1161 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Web Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'web_admin/css/theme.css' %}">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="school-logo-container" id="schoolLogoContainer">
+          <span class="school-logo-placeholder">🏫</span>
+        </div>
+        <div class="school-info">
+          <h2 id="schoolName">Loading School...</h2>
+          <p>Admin Workspace</p>
+        </div>
+      </div>
+
+      <ul class="nav-list">
+        <li class="nav-item">
+          <button data-tab="dashboard" class="active">
+            <span class="nav-icon">📊</span> Overview
+          </button>
+        </li>
+        <li class="nav-item">
+          <button data-tab="students">
+            <span class="nav-icon">👨‍🎓</span> Students
+          </button>
+        </li>
+        <li class="nav-item">
+          <button data-tab="teachers">
+            <span class="nav-icon">👩‍🏫</span> Teachers
+          </button>
+        </li>
+        <li class="nav-item">
+          <button data-tab="classes">
+            <span class="nav-icon">🏫</span> Classes / Batches
+          </button>
+        </li>
+        <li class="nav-item">
+          <button data-tab="subjects">
+            <span class="nav-icon">📚</span> Subjects
+          </button>
+        </li>
+        <li class="nav-item">
+          <button data-tab="timetable">
+            <span class="nav-icon">📅</span> Timetables
+          </button>
+        </li>
+        <li class="nav-item">
+          <button data-tab="exams">
+            <span class="nav-icon">📝</span> Exams & Marks
+          </button>
+        </li>
+        <li class="nav-item">
+          <button data-tab="fees">
+            <span class="nav-icon">💳</span> Fee Management
+          </button>
+        </li>
+        <li class="nav-item">
+          <button data-tab="payroll">
+            <span class="nav-icon">💼</span> Payroll & Salary
+          </button>
+        </li>
+        <li class="nav-item">
+          <button data-tab="attendance">
+            <span class="nav-icon">📌</span> Attendance
+          </button>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar" id="userAvatar">A</div>
+          <div class="user-details">
+            <div class="user-name" id="adminName">Admin User</div>
+            <div class="user-role">Administrator</div>
+          </div>
+        </div>
+        <button class="btn-logout" onclick="logout()">
+          <span>🚪</span> Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-wrapper">
+      
+      <!-- Top Navbar -->
+      <header class="top-bar">
+        <h1 class="page-title" id="pageTitle">Overview</h1>
+        <div class="top-actions">
+          <span class="badge-tag">Chocolate Truffle Theme</span>
+        </div>
+      </header>
+
+      <div class="content-area">
+        
+        <!-- SECTION: DASHBOARD -->
+        <section id="section-dashboard" class="view-section active">
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-icon">👨‍🎓</div>
+              <div class="metric-data">
+                <h3 id="countStudents">0</h3>
+                <p>Total Students</p>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon">👩‍🏫</div>
+              <div class="metric-data">
+                <h3 id="countTeachers">0</h3>
+                <p>Total Teachers</p>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon">🏫</div>
+              <div class="metric-data">
+                <h3 id="countClasses">0</h3>
+                <p>Active Classes</p>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon">📚</div>
+              <div class="metric-data">
+                <h3 id="countSubjects">0</h3>
+                <p>Subjects Offered</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3>⚡ Quick Actions</h3>
+            </div>
+            <div style="padding: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+              <button class="btn btn-primary" onclick="openModal('modalCreateStudent')">+ Add Student</button>
+              <button class="btn btn-primary" onclick="openModal('modalCreateTeacher')">+ Add Teacher</button>
+              <button class="btn btn-secondary" onclick="openModal('modalCreateClass')">+ Add Class</button>
+              <button class="btn btn-secondary" onclick="openModal('modalCreateSubject')">+ Add Subject</button>
+              <button class="btn btn-secondary" onclick="openModal('modalCreateFee')">+ Create Fee Structure</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: STUDENTS -->
+        <section id="section-students" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center;">
+                <input type="text" id="searchStudentInput" class="search-input" placeholder="Search by name, email, or phone..." style="width: 260px;">
+                <select id="filterStudentGender" class="form-select" onchange="filterStudentsList()">
+                  <option value="">All Genders</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+                <select id="sortStudentBy" class="form-select" onchange="filterStudentsList()">
+                  <option value="name_asc">Name (A-Z)</option>
+                  <option value="name_desc">Name (Z-A)</option>
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="openModal('modalCreateStudent')">+ Create Student</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Roll No</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Parent Contact</th>
+                    <th>Gender</th>
+                    <th>Batch / Class</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                  <tr><td colspan="9" style="text-align:center;">Loading students...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: TEACHERS -->
+        <section id="section-teachers" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center;">
+                <input type="text" id="searchTeacherInput" class="search-input" placeholder="Search by teacher name..." style="width: 260px;">
+                <select id="filterTeacherGender" class="form-select" onchange="filterTeachersList()">
+                  <option value="">All Genders</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="openModal('modalCreateTeacher')">+ Add Teacher</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Gender</th>
+                    <th>Assigned Subjects</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="teachersTableBody">
+                  <tr><td colspan="7" style="text-align:center;">Loading teachers...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: CLASSES / BATCHES -->
+        <section id="section-classes" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3>Class Batches</h3>
+              <button class="btn btn-primary" onclick="openModal('modalCreateClass')">+ Create Class Batch</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Class Name</th>
+                    <th>Section</th>
+                    <th>Academic Year</th>
+                    <th>Batch ID</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="classesTableBody">
+                  <tr><td colspan="5" style="text-align:center;">Loading classes...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: SUBJECTS -->
+        <section id="section-subjects" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3>Subject Offerings</h3>
+              <button class="btn btn-primary" onclick="openModal('modalCreateSubject')">+ Add Subject</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Subject Name</th>
+                    <th>Code</th>
+                    <th>Assigned Teacher</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="subjectsTableBody">
+                  <tr><td colspan="4" style="text-align:center;">Loading subjects...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: TIMETABLE -->
+        <section id="section-timetable" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3>Timetables & Class Schedules</h3>
+              <button class="btn btn-primary" onclick="openModal('modalCreateTimetable')">+ Add Schedule</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Day</th>
+                    <th>Time</th>
+                    <th>Class</th>
+                    <th>Subject</th>
+                    <th>Teacher</th>
+                    <th>Schedule Type</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="timetableTableBody">
+                  <tr><td colspan="7" style="text-align:center;">Loading timetables...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: EXAMS & MARKS -->
+        <section id="section-exams" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3>Exams & Grading</h3>
+              <button class="btn btn-primary" onclick="openModal('modalCreateExam')">+ Schedule Exam</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Exam Name</th>
+                    <th>Subject</th>
+                    <th>Class Batch</th>
+                    <th>Total Mark</th>
+                    <th>Pass Mark</th>
+                    <th>Grading & Analytics</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="examsTableBody">
+                  <tr><td colspan="7" style="text-align:center;">Loading exams...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: FEES -->
+        <section id="section-fees" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3>Fee Structures & Transactions</h3>
+              <button class="btn btn-primary" onclick="openModal('modalCreateFee')">+ Create Fee Structure</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>Fee Description</th>
+                    <th>Class</th>
+                    <th>Amount</th>
+                    <th>Due Date</th>
+                    <th>Payment Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="feesTableBody">
+                  <tr><td colspan="7" style="text-align:center;">Loading fees...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: PAYROLL -->
+        <section id="section-payroll" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3>Payroll Management & Disbursement</h3>
+              <button class="btn btn-primary" onclick="openModal('modalCreatePayroll')">+ Record Disbursement</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Teacher</th>
+                    <th>Month</th>
+                    <th>Method</th>
+                    <th>Transaction Ref</th>
+                    <th>Amount Paid</th>
+                    <th>Disbursed Date</th>
+                  </tr>
+                </thead>
+                <tbody id="payrollTableBody">
+                  <tr><td colspan="6" style="text-align:center;">Loading payroll records...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION: ATTENDANCE -->
+        <section id="section-attendance" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3>Attendance Sessions</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Session ID</th>
+                    <th>Class Batch</th>
+                    <th>Teacher</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="attendanceTableBody">
+                  <tr><td colspan="5" style="text-align:center;">Loading attendance...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- Modal: Create Student -->
+  <div id="modalCreateStudent" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Add New Student</h3>
+        <button class="modal-close" onclick="closeModal('modalCreateStudent')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleCreateStudent(event)">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Full Name *</label>
+              <input type="text" name="name" class="form-input" required placeholder="John Doe">
+            </div>
+            <div class="form-group">
+              <label>Email Address</label>
+              <input type="email" name="email" class="form-input" placeholder="john@student.com">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Phone Number *</label>
+              <input type="text" name="phone" class="form-input" required placeholder="+91 9876543210">
+            </div>
+            <div class="form-group">
+              <label>Parent Contact Number</label>
+              <input type="text" name="parent_contact" class="form-input" placeholder="+91 9876543211">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Roll Number (Optional)</label>
+              <input type="text" name="roll_number" class="form-input" placeholder="e.g. 101">
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select name="gender" class="form-select">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Date of Birth</label>
+              <input type="date" name="date_of_birth" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>Assigned Batch / Class</label>
+              <select name="batch_id" id="studentBatchSelect" class="form-select">
+                <option value="">Loading Classes...</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Home Address</label>
+            <textarea name="address" class="form-input" rows="2" placeholder="Residential address..."></textarea>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Password *</label>
+              <input type="password" name="password" class="form-input" required placeholder="Min 8 characters">
+            </div>
+            <div class="form-group">
+              <label>Confirm Password *</label>
+              <input type="password" name="confirm_password" class="form-input" required placeholder="Confirm password">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Save Student Record</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Teacher -->
+  <div id="modalCreateTeacher" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Add New Teacher</h3>
+        <button class="modal-close" onclick="closeModal('modalCreateTeacher')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleCreateTeacher(event)">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Full Name *</label>
+              <input type="text" name="name" class="form-input" required placeholder="Sarah Smith">
+            </div>
+            <div class="form-group">
+              <label>Email Address *</label>
+              <input type="email" name="email" class="form-input" required placeholder="sarah@school.com">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Phone Number *</label>
+              <input type="text" name="phone" class="form-input" required placeholder="+91 9876543210">
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select name="gender" class="form-select">
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Password *</label>
+            <input type="password" name="password" class="form-input" required placeholder="Min 8 characters">
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Save Teacher Record</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Class -->
+  <div id="modalCreateClass" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Create Class Batch</h3>
+        <button class="modal-close" onclick="closeModal('modalCreateClass')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleCreateClass(event)">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Class Name *</label>
+              <input type="text" name="classs" class="form-input" required placeholder="e.g. Class 10">
+            </div>
+            <div class="form-group">
+              <label>Section (Optional)</label>
+              <input type="text" name="section" class="form-input" placeholder="e.g. A or B">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Academic Year *</label>
+            <input type="text" name="year" class="form-input" required placeholder="e.g. 2025-26">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Save Class Batch</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Class -->
+  <div id="modalEditClass" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Class Batch</h3>
+        <button class="modal-close" onclick="closeModal('modalEditClass')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleEditClass(event)">
+          <input type="hidden" id="editClassId" name="id">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Class Name *</label>
+              <input type="text" id="editClassName" name="classs" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Section (Optional)</label>
+              <input type="text" id="editClassSection" name="section" class="form-input">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Academic Year *</label>
+            <input type="text" id="editClassYear" name="year" class="form-input" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Update Class Batch</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Subject -->
+  <div id="modalCreateSubject" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Add Subject</h3>
+        <button class="modal-close" onclick="closeModal('modalCreateSubject')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleCreateSubject(event)">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Subject Name *</label>
+              <input type="text" name="subject_name" class="form-input" required placeholder="e.g. Mathematics">
+            </div>
+            <div class="form-group">
+              <label>Subject Code *</label>
+              <input type="text" name="subject_code" class="form-input" required placeholder="e.g. MATH101">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Save Subject</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Fee Structure -->
+  <div id="modalCreateFee" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Create Fee Structure</h3>
+        <button class="modal-close" onclick="closeModal('modalCreateFee')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleCreateFee(event)">
+          <div class="form-group">
+            <label>Select Student *</label>
+            <select name="student_id" id="feeStudentSelect" class="form-select" required>
+              <option value="">Loading Students...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Select Class Batch *</label>
+            <select name="batch_id" id="feeBatchSelect" class="form-select" required>
+              <option value="">Loading Classes...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Fee Description</label>
+            <input type="text" name="description" class="form-input" placeholder="e.g. Tuition Fee - Q3">
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Fee Amount (₹) *</label>
+              <input type="number" name="amount" class="form-input" required step="0.01" placeholder="5000.00">
+            </div>
+            <div class="form-group">
+              <label>Due Date *</label>
+              <input type="date" name="due_date" class="form-input" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Assign Fee</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Timetable -->
+  <div id="modalCreateTimetable" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Add Timetable Schedule</h3>
+        <button class="modal-close" onclick="closeModal('modalCreateTimetable')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleCreateTimetable(event)">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Class Batch *</label>
+              <select name="classs_id" id="timetableClassSelect" class="form-select" required>
+                <option value="">Loading Classes...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Subject *</label>
+              <select name="subject_id" id="timetableSubjectSelect" class="form-select" required>
+                <option value="">Loading Subjects...</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Assigned Teacher (Optional)</label>
+            <select name="teacher_id" id="timetableTeacherSelect" class="form-select">
+              <option value="">Loading Teachers...</option>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Day of Week *</label>
+              <select name="day" class="form-select" required>
+                <option value="mon">Monday</option>
+                <option value="tue">Tuesday</option>
+                <option value="wed">Wednesday</option>
+                <option value="thu">Thursday</option>
+                <option value="fri">Friday</option>
+                <option value="sat">Saturday</option>
+                <option value="sun">Sunday</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Schedule Type</label>
+              <select name="is_exam" class="form-select">
+                <option value="false">Regular Class</option>
+                <option value="true">Exam Schedule</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Start Time *</label>
+              <input type="time" name="start_time" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>End Time *</label>
+              <input type="time" name="end_time" class="form-input" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Save Schedule</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Exam -->
+  <div id="modalCreateExam" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Schedule Exam</h3>
+        <button class="modal-close" onclick="closeModal('modalCreateExam')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formCreateExam">
+          <div class="form-group">
+            <label>Exam Name</label>
+            <input type="text" id="examName" class="form-input" required placeholder="e.g. Mid-Term Exam 2026">
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Class Batch *</label>
+              <select id="examBatchSelect" class="form-select" required>
+                <option value="">Loading Classes...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Subject *</label>
+              <select id="examSubjectSelect" class="form-select" required>
+                <option value="">Loading Subjects...</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Total Mark</label>
+              <input type="number" id="examTotal" class="form-input" required placeholder="100">
+            </div>
+            <div class="form-group">
+              <label>Pass Mark</label>
+              <input type="number" id="examPass" class="form-input" required placeholder="40">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Save Exam</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Payroll Disbursement -->
+  <div id="modalCreatePayroll" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Record Teacher Payroll Disbursement</h3>
+        <button class="modal-close" onclick="closeModal('modalCreatePayroll')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleCreatePayroll(event)">
+          <div class="form-group">
+            <label>Select Teacher *</label>
+            <select name="teacher_id" id="payrollTeacherSelect" class="form-select" required>
+              <option value="">Loading Teachers...</option>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Disbursement Month *</label>
+              <input type="text" name="disbursement_month" class="form-input" required placeholder="August 2026">
+            </div>
+            <div class="form-group">
+              <label>Payment Method</label>
+              <select name="payment_method" class="form-select">
+                <option value="bank">Bank Transfer</option>
+                <option value="upi">UPI</option>
+                <option value="cash">Cash</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Amount to Pay (₹) *</label>
+              <input type="number" name="amount" class="form-input" required step="0.01" placeholder="25000.00">
+            </div>
+            <div class="form-group">
+              <label>Transaction / Ref ID</label>
+              <input type="text" name="transaction_id" class="form-input" placeholder="TXN123456">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Remarks / Notes</label>
+            <textarea name="remarks" class="form-input" rows="2" placeholder="Monthly salary payment..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Disburse Payroll</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Student -->
+  <div id="modalEditStudent" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Student Record</h3>
+        <button class="modal-close" onclick="closeModal('modalEditStudent')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleEditStudent(event)">
+          <input type="hidden" id="editStudentId" name="id">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Full Name *</label>
+              <input type="text" id="editStudentName" name="name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Email Address</label>
+              <input type="email" id="editStudentEmail" name="email" class="form-input">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Phone Number *</label>
+              <input type="text" id="editStudentPhone" name="phone" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Parent Contact Number</label>
+              <input type="text" id="editStudentParentContact" name="parent_contact" class="form-input">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Roll Number</label>
+              <input type="text" id="editStudentRollNumber" name="roll_number" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select id="editStudentGender" name="gender" class="form-select">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Assigned Batch / Class</label>
+            <select id="editStudentBatchSelect" name="batch_id" class="form-select">
+              <option value="">Loading Classes...</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Update Student</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Teacher -->
+  <div id="modalEditTeacher" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Teacher Record</h3>
+        <button class="modal-close" onclick="closeModal('modalEditTeacher')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleEditTeacher(event)">
+          <input type="hidden" id="editTeacherId" name="id">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Full Name *</label>
+              <input type="text" id="editTeacherName" name="name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Email Address *</label>
+              <input type="email" id="editTeacherEmail" name="email" class="form-input" required>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Phone Number *</label>
+              <input type="text" id="editTeacherPhone" name="phone" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select id="editTeacherGender" name="gender" class="form-select">
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Update Teacher</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Subject -->
+  <div id="modalEditSubject" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Subject</h3>
+        <button class="modal-close" onclick="closeModal('modalEditSubject')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleEditSubject(event)">
+          <input type="hidden" id="editSubjectId" name="id">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Subject Name *</label>
+              <input type="text" id="editSubjectName" name="subject_name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Subject Code *</label>
+              <input type="text" id="editSubjectCode" name="subject_code" class="form-input" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Update Subject</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Timetable -->
+  <div id="modalEditTimetable" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Timetable Schedule</h3>
+        <button class="modal-close" onclick="closeModal('modalEditTimetable')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleEditTimetable(event)">
+          <input type="hidden" id="editTimetableId" name="id">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Class Batch *</label>
+              <select id="editTimetableClassSelect" name="classs_id" class="form-select" required>
+                <option value="">Loading Classes...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Subject *</label>
+              <select id="editTimetableSubjectSelect" name="subject_id" class="form-select" required>
+                <option value="">Loading Subjects...</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Assigned Teacher (Optional)</label>
+            <select id="editTimetableTeacherSelect" name="teacher_id" class="form-select">
+              <option value="">Loading Teachers...</option>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Day of Week *</label>
+              <select id="editTimetableDay" name="day" class="form-select" required>
+                <option value="mon">Monday</option>
+                <option value="tue">Tuesday</option>
+                <option value="wed">Wednesday</option>
+                <option value="thu">Thursday</option>
+                <option value="fri">Friday</option>
+                <option value="sat">Saturday</option>
+                <option value="sun">Sunday</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Schedule Type</label>
+              <select id="editTimetableIsExam" name="is_exam" class="form-select">
+                <option value="false">Regular Class</option>
+                <option value="true">Exam Schedule</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Start Time *</label>
+              <input type="time" id="editTimetableStartTime" name="start_time" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>End Time *</label>
+              <input type="time" id="editTimetableEndTime" name="end_time" class="form-input" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Update Schedule</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Exam -->
+  <div id="modalEditExam" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Exam Details</h3>
+        <button class="modal-close" onclick="closeModal('modalEditExam')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleEditExam(event)">
+          <input type="hidden" id="editExamId" name="id">
+          <div class="form-group">
+            <label>Exam Name *</label>
+            <input type="text" id="editExamName" name="exam_name" class="form-input" required>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Class Batch *</label>
+              <select id="editExamBatchSelect" name="batch_id" class="form-select" required>
+                <option value="">Loading Classes...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Subject *</label>
+              <select id="editExamSubjectSelect" name="subject_id" class="form-select" required>
+                <option value="">Loading Subjects...</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Total Mark *</label>
+              <input type="number" id="editExamTotalMark" name="total_mark" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Pass Mark *</label>
+              <input type="number" id="editExamPassMark" name="pass_mark" class="form-input" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Update Exam</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Fee Structure -->
+  <div id="modalEditFee" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Fee Structure</h3>
+        <button class="modal-close" onclick="closeModal('modalEditFee')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleEditFee(event)">
+          <input type="hidden" id="editFeeId" name="id">
+          <div class="form-group">
+            <label>Fee Description</label>
+            <input type="text" id="editFeeDescription" name="description" class="form-input">
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Fee Amount (₹) *</label>
+              <input type="number" id="editFeeAmount" name="amount" class="form-input" required step="0.01">
+            </div>
+            <div class="form-group">
+              <label>Due Date *</label>
+              <input type="date" id="editFeeDueDate" name="due_date" class="form-input" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Update Fee Structure</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Record Payment -->
+  <div id="modalRecordPayment" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Record Fee Payment</h3>
+        <button class="modal-close" onclick="closeModal('modalRecordPayment')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleRecordPayment(event)">
+          <input type="hidden" id="paymentFeeId">
+          <div class="form-group">
+            <label id="paymentFeeLabel" style="font-weight:600; color:var(--color-caramel);">Fee Record</label>
+          </div>
+          <div class="form-group">
+            <label>Payment Amount (₹) *</label>
+            <input type="number" id="paymentAmountInput" class="form-input" required step="0.01" min="1" placeholder="Enter amount...">
+          </div>
+          <div class="form-group">
+            <label>Payment Method *</label>
+            <select id="paymentMethodSelect" class="form-select">
+              <option value="cash">Cash</option>
+              <option value="upi">UPI</option>
+              <option value="bank">Bank Transfer</option>
+              <option value="cheque">Cheque</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Confirm Payment</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="{% static 'web_admin/js/app.js' %}"></script>
+  <script>
+    // Inline exam creation modal handler
+    document.getElementById('formCreateExam').onsubmit = async (e) => {
+      e.preventDefault();
+      const body = {
+        exam_name: document.getElementById('examName').value,
+        batch: parseInt(document.getElementById('examBatchSelect').value),
+        subject: parseInt(document.getElementById('examSubjectSelect').value),
+        total_mark: parseFloat(document.getElementById('examTotal').value),
+        pass_mark: parseFloat(document.getElementById('examPass').value)
+      };
+      try {
+        await apiFetch('/academics/exams/', { method: 'POST', body: JSON.stringify(body) });
+        showToast('Exam created successfully!', 'success');
+        closeModal('modalCreateExam');
+        loadExams();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+  </script>
+</body>
+</html>

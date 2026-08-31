@@ -18,6 +18,9 @@ urlpatterns = [
     path('api/fee/', include('apps.academics.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
 
+    # Web Admin Portal
+    path('dashboard/', include('apps.web_admin.urls')),
+
     # JWT Authentication
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
