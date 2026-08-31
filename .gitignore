@@ -27,3 +27,4 @@ static/import_export/
 *.swp
 backup.json
 .env
+config/firebase_credentials.json

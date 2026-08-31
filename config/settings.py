@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'apps.subject',
     'apps.attendance',
     'apps.academics',
+    'apps.notifications',
 ]
 
 REST_FRAMEWORK = {

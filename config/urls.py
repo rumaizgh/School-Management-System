@@ -16,7 +16,7 @@ urlpatterns = [
     path('api/batch/', include('apps.academics.urls')),
     path('api/academics/', include('apps.academics.urls')),
     path('api/fee/', include('apps.academics.urls')),
-
+    path('api/notifications/', include('apps.notifications.urls')),
 
     # JWT Authentication
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
