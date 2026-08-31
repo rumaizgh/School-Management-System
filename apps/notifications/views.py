@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.core.paginator import Paginator
 from django.db import models
 from apps.account.models import UserData
+from apps.account.pagination import CustomPagination
 from .models import UserDevice, NotificationHistory
 from .serializers import (
     DeviceTokenSerializer,
@@ -70,34 +71,16 @@ class NotificationHistoryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        page_number = request.query_params.get('page', 1)
-        limit = request.query_params.get('limit', 20)
-
-        try:
-            page_number = int(page_number)
-            limit = int(limit)
-        except ValueError:
-            page_number = 1
-            limit = 20
-
         notifications_qs = NotificationHistory.objects.filter(user=request.user)
         unread_count = notifications_qs.filter(is_read=False).count()
 
-        paginator = Paginator(notifications_qs, limit)
-        page_obj = paginator.get_page(page_number)
+        paginator = CustomPagination()
+        paginated_qs = paginator.paginate_queryset(notifications_qs, request)
+        serializer = NotificationHistorySerializer(paginated_qs, many=True)
 
-        serializer = NotificationHistorySerializer(page_obj.object_list, many=True)
-
-        return Response(
-            {
-                "status": "success",
-                "data": {
-                    "unread_count": unread_count,
-                    "notifications": serializer.data
-                }
-            },
-            status=status.HTTP_200_OK
-        )
+        response = paginator.get_paginated_response(serializer.data)
+        response.data['unread_count'] = unread_count
+        return response
 
 
 class MarkNotificationReadView(APIView):
