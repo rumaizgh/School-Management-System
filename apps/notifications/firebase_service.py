@@ -1,8 +1,13 @@
 import os
 import logging
 from django.conf import settings
-import firebase_admin
-from firebase_admin import credentials, messaging
+try:
+    import firebase_admin
+    from firebase_admin import credentials, messaging
+except ImportError:
+    firebase_admin = None
+    credentials = None
+    messaging = None
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +16,9 @@ _firebase_initialized = False
 
 def initialize_firebase():
     global _firebase_initialized
-    if _firebase_initialized or firebase_admin._apps:
+    if not firebase_admin:
+        return
+    if _firebase_initialized or (firebase_admin and firebase_admin._apps):
         _firebase_initialized = True
         return
 

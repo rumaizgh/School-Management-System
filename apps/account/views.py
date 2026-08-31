@@ -290,7 +290,7 @@ class SearchTeacher(ListAPIView):
             user_type="teacher",
             is_active=True
         )
-<<<<<<< Updated upstream
+        return InstituteFilterBackend().filter_queryset(self.request, qs, None)
 
 
 class ExportTeachers(APIView):
@@ -333,6 +333,3 @@ class ExportStudents(APIView):
         filename = f"students_batch_{batch_id}.xlsx" if batch_id else "students.xlsx"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
-=======
-        return InstituteFilterBackend().filter_queryset(self.request, qs, None)
->>>>>>> Stashed changes
