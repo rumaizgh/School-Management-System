@@ -2,6 +2,7 @@ from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.core.paginator import Paginator
+from django.db import models
 from apps.account.models import UserData
 from .models import UserDevice, NotificationHistory
 from .serializers import (
@@ -169,7 +170,6 @@ class SendBroadcastView(APIView):
         if hasattr(request.user, 'institute') and request.user.institute:
             target_users_qs = target_users_qs.filter(
                 models.Q(institute=request.user.institute) |
-                models.Q(admins__institute=request.user.institute) |
                 models.Q(classs__institute=request.user.institute)
             ).distinct()
 
