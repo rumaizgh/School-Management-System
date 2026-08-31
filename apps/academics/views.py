@@ -20,6 +20,13 @@ from django.db.models import Count, Q, Sum, Avg, Max, Min, F, Value, DecimalFiel
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from apps.account.pagination import CustomPagination
+from apps.notifications.services import (
+    send_fee_assigned_notification,
+    send_payment_success_notification,
+    send_exam_scheduled_notification,
+    send_marks_released_notification,
+    send_timetable_updated_notification
+)
 
 
 class CreateClass(APIView):
@@ -161,15 +168,17 @@ class TimeTablesView(APIView):
     def post(self, request):
         serializer = TimeTableSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(institute=request.user.institute)
-            return Response(serializer.data,  status=status.HTTP_201_CREATED)
+            timetable = serializer.save(institute=request.user.institute)
+            send_timetable_updated_notification(timetable)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, id):
         timetable = get_institute_scoped_object_or_404(TimeTable, request, id=id)
         serializer = TimeTableSerializer(timetable, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()
+            timetable = serializer.save()
+            send_timetable_updated_notification(timetable)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -205,6 +214,8 @@ class PaymentListCreateAPIView(APIView):
             fee.balance_amount = fee.amount - total_paid
             fee.paid = total_paid >= fee.amount
             fee.save()
+
+            send_payment_success_notification(payment)
 
             return Response(serializer.data, status=201)
 
@@ -277,6 +288,8 @@ class FeeListCreateAPIView(APIView):
                 return Response(
                     {"error": "Fee can be created only for students"},status=400)
 
+            send_fee_assigned_notification(fee)
+
             return Response(serializer.data, status=201)
 
         return Response(serializer.errors, status=400)
@@ -334,7 +347,8 @@ class CreatePayment(APIView):
                     status=400
                 )
 
-            serializer.save()
+            payment = serializer.save()
+            send_payment_success_notification(payment)
             return Response(serializer.data, status=201)
 
         return Response(serializer.errors, status=400)
@@ -526,7 +540,8 @@ class MarkListCreateAPIView(APIView):
             # Validate that the student and exam belong to the same institute
             student = get_institute_scoped_object_or_404(UserData, request, id=serializer.validated_data['student'].id, user_type='student')
             exam = get_institute_scoped_object_or_404(Exam, request, id=serializer.validated_data['exam'].id)
-            serializer.save()
+            mark = serializer.save()
+            send_marks_released_notification(mark)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -539,7 +554,8 @@ class MarkUpdateAPIView(APIView):
         mark = get_institute_scoped_object_or_404(Mark, request, id=id)
         serializer = MarkSerializer(mark, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()
+            updated_mark = serializer.save()
+            send_marks_released_notification(updated_mark)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -548,7 +564,8 @@ class MarkUpdateAPIView(APIView):
         mark = get_institute_scoped_object_or_404(Mark, request, id=id)
         serializer = MarkSerializer(mark, data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            updated_mark = serializer.save()
+            send_marks_released_notification(updated_mark)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -687,7 +704,8 @@ class ExamListCreateAPIView(APIView):
     def post(self, request):
         serializer = ExamSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(institute=request.user.institute)
+            exam = serializer.save(institute=request.user.institute)
+            send_exam_scheduled_notification(exam)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -788,7 +806,9 @@ class ExamMarksAPIView(APIView):
             if not created:
                 mark.obtained_mark = obtained if obtained is not None else 0
                 mark.save()
-                
+
+            send_marks_released_notification(mark)
+
         return Response({"message": "Marks successfully updated."}, status=status.HTTP_200_OK)
 
 

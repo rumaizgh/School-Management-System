@@ -20,6 +20,7 @@ from django.db.models import Q
 from apps.account.pagination import CustomPagination
 from apps.academics.models import TimeTable
 from apps.account.filters import get_institute_scoped_object_or_404, InstituteFilterBackend
+from apps.notifications.services import send_attendance_absent_notification
 
 
 class AttendanceSessionCreate(APIView):
@@ -155,7 +156,10 @@ class AttendanceStudentsList(APIView):
     def post(self, request):
         serializer = AttendanceRecordSerializer(data=request.data, many=True)
         if serializer.is_valid():
-            serializer.save()
+            records = serializer.save()
+            for record in records:
+                if record.status == 'absent':
+                    send_attendance_absent_notification(record.student, record.session)
             return Response(serializer.data)
         return Response(serializer.errors)
 
@@ -181,7 +185,9 @@ class AttendanceRecordView(APIView):
             serializer = AttendanceRecordSerializer(record, data=item, partial=True)
 
             if serializer.is_valid():
-                serializer.save()
+                updated_record = serializer.save()
+                if updated_record.status == 'absent':
+                    send_attendance_absent_notification(updated_record.student, updated_record.session)
                 updated_records.append(serializer.data)
             else:
                 return Response(serializer.errors)
