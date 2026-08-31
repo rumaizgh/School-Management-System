@@ -74,6 +74,10 @@ class NotificationHistoryView(APIView):
         notifications_qs = NotificationHistory.objects.filter(user=request.user)
         unread_count = notifications_qs.filter(is_read=False).count()
 
+        notif_type = request.query_params.get('type')
+        if notif_type:
+            notifications_qs = notifications_qs.filter(type=notif_type.strip())
+
         paginator = CustomPagination()
         paginated_qs = paginator.paginate_queryset(notifications_qs, request)
         serializer = NotificationHistorySerializer(paginated_qs, many=True)
