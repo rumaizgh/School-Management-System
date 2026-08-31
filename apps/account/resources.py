@@ -11,7 +11,7 @@ class UserDataResource(resources.ModelResource):
         import_id_fields = ['email']
         skip_unchanged = True
         fields = (
-            'id', 'roll_no', 'name', 'email', 'gender', 'user_type', 'phone', 'profile', 'address',
+            'id', 'roll_number', 'name', 'email', 'gender', 'user_type', 'phone', 'address',
             'date_of_birth', 'parent_name', 'parent_contact',
             'classes', 'subjects', 'institute_name'
         )
