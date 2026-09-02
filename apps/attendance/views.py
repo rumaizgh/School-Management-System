@@ -21,6 +21,7 @@ from apps.account.pagination import CustomPagination
 from apps.academics.models import TimeTable
 from apps.account.filters import get_institute_scoped_object_or_404, InstituteFilterBackend
 from apps.notifications.services import send_attendance_absent_notification
+from apps.notifications.models import NotificationHistory
 
 
 class AttendanceSessionCreate(APIView):
@@ -195,6 +196,8 @@ class AttendanceRecordView(APIView):
         return Response(updated_records)
 
 class StudentAttendanceView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         status = request.GET.get("status")
 
@@ -209,7 +212,11 @@ class StudentAttendanceView(APIView):
             records = records.filter(status=status)
 
         serializer = ViewAttendanceRecordStudentSerializer(records, many=True)
-        return Response(serializer.data)
+        unread_count = NotificationHistory.objects.filter(user=request.user, is_read=False).count()
+        return Response({
+            "unread_count": unread_count,
+            "records": serializer.data
+        })
     
 class TeacherStudentAttendanceView(APIView):
     def get(self,request,id):
