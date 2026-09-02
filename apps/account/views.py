@@ -19,6 +19,7 @@ from rest_framework.generics import ListAPIView
 from .pagination import CustomPagination
 from django.db.models import Count, Q
 from .resources import UserDataResource
+from apps.notifications.models import NotificationHistory
 
 class DashboardCountAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -42,13 +43,16 @@ class DashboardCountAPI(APIView):
             class_count = Batch.objects.filter(institute=institute).count()
             subject_count = Subject.objects.filter(institute=institute).count()
 
+        unread_count = NotificationHistory.objects.filter(user=user, is_read=False).count()
+
         return Response({
             "status": True,
             "data": {
                 "students": user_counts['total_students'],
                 "teachers": user_counts['total_teachers'],
                 "classes": class_count,
-                "subjects": subject_count
+                "subjects": subject_count,
+                "unread_count": unread_count
             }
         })
 
