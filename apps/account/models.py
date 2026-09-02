@@ -59,6 +59,7 @@ class UserData(AbstractUser):
     parent_contact = models.CharField(max_length=15, null=True, blank=True)
     roll_no = models.CharField(max_length=50, blank=True, null=True)
     profile = models.ImageField(upload_to='profiles/', null=True, blank=True)
+    has_salary_config = models.BooleanField(default=False)
     subject = models.ManyToManyField(
         'subject.Subject',
         related_name="teachers",
