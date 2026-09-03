@@ -54,7 +54,6 @@ class UserData(AbstractUser):
     ]
     gender = models.CharField(max_length=20, choices=GENDER_CHOICES, null=True, blank=True)
     date_of_birth = models.DateField(blank=True, null=True)
-    roll_number = models.CharField(max_length=20, null=True, blank=True)
     parent_name = models.CharField(max_length=100, null=True, blank=True)
     parent_contact = models.CharField(max_length=15, null=True, blank=True)
     roll_no = models.CharField(max_length=50, blank=True, null=True)

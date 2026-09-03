@@ -56,6 +56,57 @@ class DashboardCountAPI(APIView):
             }
         })
 
+
+class TeacherDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        institute = getattr(user, 'institute', None)
+
+        # Unread notification count for the logged-in teacher
+        unread_count = NotificationHistory.objects.filter(user=user, is_read=False).count()
+
+        # Teacher specific metrics
+        if user.user_type == 'teacher':
+            assigned_subjects = Subject.objects.filter(teacher=user)
+            if institute:
+                assigned_subjects = assigned_subjects.filter(institute=institute)
+            subject_count = assigned_subjects.count()
+
+            assigned_batches = Batch.objects.filter(subjects__teacher=user).distinct()
+            if institute:
+                assigned_batches = assigned_batches.filter(institute=institute)
+            class_count = assigned_batches.count()
+
+            student_qs = UserData.objects.filter(
+                user_type='student',
+                is_active=True,
+                classs__in=assigned_batches
+            ).distinct()
+            if institute:
+                student_qs = student_qs.filter(institute=institute)
+            student_count = student_qs.count()
+        else:
+            if user.is_superuser and not institute:
+                student_count = UserData.objects.filter(user_type='student', is_active=True).count()
+                class_count = Batch.objects.count()
+                subject_count = Subject.objects.count()
+            else:
+                student_count = UserData.objects.filter(institute=institute, user_type='student', is_active=True).count()
+                class_count = Batch.objects.filter(institute=institute).count()
+                subject_count = Subject.objects.filter(institute=institute).count()
+
+        return Response({
+            "status": True,
+            "data": {
+                "unread_count": unread_count,
+                "total_students": student_count,
+                "total_classes": class_count,
+                "total_subjects": subject_count,
+            }
+        }, status=status.HTTP_200_OK)
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 

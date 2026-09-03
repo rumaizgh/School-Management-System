@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'apps.academics',
     'apps.notifications',
     'apps.web_admin',
+    'apps.payroll',
 ]
 
 REST_FRAMEWORK = {

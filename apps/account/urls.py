@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     LoginView, ViewAllTeachers, ViewAllStudents, CreateStudent, CreateTeacher,
-    DashboardCountAPI, SearchStudent, SearchTeacher, ExportTeachers, ExportStudents
+    DashboardCountAPI, SearchStudent, SearchTeacher, ExportTeachers, ExportStudents,
+    TeacherDashboardView
 )
 
 router = DefaultRouter()
@@ -18,6 +19,7 @@ urlpatterns = [
 
     path('teacher/<int:id>/', ViewAllTeachers.as_view(), name = 'teacher'),
     path('teachers/', ViewAllTeachers.as_view(), name='teachers'),
+    path('teacher/dashboard/', TeacherDashboardView.as_view(), name='teacher-dashboard'),
 
     path('student/<int:id>/', ViewAllStudents.as_view(), name='student'),
     path('students/', ViewAllStudents.as_view(), name='students'),

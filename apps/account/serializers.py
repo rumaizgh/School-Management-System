@@ -12,7 +12,7 @@ class BatchMinimalSerializer(serializers.ModelSerializer):
 class InstituteMinimalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Institute
-        fields = ['id', 'name', 'logo']
+        fields = ['id', 'name', 'logo', 'enable_pf', 'enable_tax', 'currency_code']
 
 class UserDataSerializer(serializers.ModelSerializer):
     subjects = SubjectSerializer(many=True, read_only=True)
@@ -23,7 +23,7 @@ class UserDataSerializer(serializers.ModelSerializer):
         source='subjects',
         required=False
     )
-    classs = BatchMinimalSerializer(many=True, read_only=True)  # 👈 replaces class_name
+    classs = BatchMinimalSerializer(many=True, read_only=True)  
     classs_ids = serializers.PrimaryKeyRelatedField(
         queryset=Batch.objects.all(),
         many=True,

@@ -246,3 +246,79 @@ def send_timetable_updated_notification(timetable):
     except Exception as e:
         logger.error(f"Error in send_timetable_updated_notification: {e}", exc_info=True)
         return None
+
+
+def send_salary_disbursement_notification(payment):
+    """
+    Sends a salary disbursement receipt notification to the teacher
+    when a salary payment is recorded.
+
+    Message format matches the WhatsApp receipt template in the spec:
+        Hello {teacher_name},
+        Your salary payment of {formatted_amount} for period {month} has been
+        successfully processed.
+        Payment Date: {paid_on}
+        Payment Method: {payment_method}
+        Reference ID: {transaction_id}
+        Please find your official salary receipt attached.
+    """
+    try:
+        if not payment or not payment.teacher:
+            return None
+
+        teacher = payment.teacher
+        teacher_name = teacher.name or "Teacher"
+        salary = payment.salary
+        month = salary.month if salary else ""
+        amount = payment.amount
+
+        # Format currency amount
+        try:
+            currency = (
+                salary.institute.currency_code
+                if salary and salary.institute and salary.institute.currency_code
+                else "INR"
+            )
+        except Exception:
+            currency = "INR"
+
+        formatted_amount = f"{currency} {float(amount):,.2f}"
+
+        # Format paid_on date
+        paid_on_str = ""
+        if payment.paid_on:
+            try:
+                paid_on_str = payment.paid_on.strftime('%Y-%m-%d %H:%M')
+            except Exception:
+                paid_on_str = str(payment.paid_on)
+
+        payment_method_display = (payment.payment_method or "").replace("_", " ").title()
+        transaction_id = payment.transaction_id or "N/A"
+
+        title = "Salary Disbursed ✅"
+        body = (
+            f"Hello {teacher_name}, your salary payment of {formatted_amount} "
+            f"for period {month} has been successfully processed. "
+            f"Payment Date: {paid_on_str}. "
+            f"Payment Method: {payment_method_display}. "
+            f"Reference ID: {transaction_id}."
+        )
+
+        extra_data = {
+            "payment_id": str(payment.id),
+            "salary_id": str(salary.id) if salary else "",
+            "month": month,
+        }
+
+        return send_fcm_notification(
+            user_ids=[teacher.id],
+            title=title,
+            body=body,
+            notification_type="salary_disbursement",
+            screen="salary_receipt",
+            extra_data=extra_data,
+            save_to_history=True
+        )
+    except Exception as e:
+        logger.error(f"Error in send_salary_disbursement_notification: {e}", exc_info=True)
+        return None

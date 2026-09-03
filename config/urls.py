@@ -17,6 +17,8 @@ urlpatterns = [
     path('api/academics/', include('apps.academics.urls')),
     path('api/fee/', include('apps.academics.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
+    path('api/payroll/', include('apps.payroll.urls')),
+    path('api/account/', include('apps.payroll.urls')),  # teacher payments under /api/account/
 
     # Web Admin Portal
     path('dashboard/', include('apps.web_admin.urls')),
