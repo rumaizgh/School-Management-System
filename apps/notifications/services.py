@@ -75,6 +75,41 @@ def send_fee_assigned_notification(fee):
         return None
 
 
+def send_fee_updated_notification(fee):
+    """
+    Sends notification when an existing fee is updated for a student.
+    Target: Student (and Parent).
+    """
+    try:
+        if not fee or not fee.student:
+            return None
+
+        amount_str = f"{fee.amount:g}" if isinstance(fee.amount, (int, float)) else str(fee.amount)
+        batch_name = fee.batch.classs if fee.batch else "Class"
+        due_date_str = fee.due_date.strftime('%Y-%m-%d') if fee.due_date else ""
+
+        title = "Fee Details Updated 💳"
+        body = f"Your fee of ₹{amount_str} for Class {batch_name} due on {due_date_str} has been updated."
+
+        extra_data = {
+            "fee_id": str(fee.id),
+            "student_id": str(fee.student.id),
+        }
+
+        return send_fcm_notification(
+            user_ids=[fee.student.id],
+            title=title,
+            body=body,
+            notification_type="fee_alert",
+            screen="fee_details",
+            extra_data=extra_data,
+            save_to_history=True
+        )
+    except Exception as e:
+        logger.error(f"Error in send_fee_updated_notification: {e}", exc_info=True)
+        return None
+
+
 def send_payment_success_notification(payment):
     """
     Sends notification when payment is successfully recorded for a student's fee.

@@ -19,6 +19,14 @@ class AttendanceSession(models.Model):
     date = models.DateField(default=timezone.localdate)
     time = models.TimeField()
 
+    def save(self, *args, **kwargs):
+        if not self.institute:
+            if self.teacher and self.teacher.institute:
+                self.institute = self.teacher.institute
+            elif self.classs and self.classs.institute:
+                self.institute = self.classs.institute
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.subject} - {self.date}"
 

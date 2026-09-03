@@ -37,10 +37,11 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
 
 class AttendanceRecordStudentSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='student.name', read_only=True)
-    session = serializers.CharField(source='session.teacher',read_only=True)
+    session = serializers.CharField(source='session.teacher', read_only=True)
+
     class Meta:
         model = AttendanceRecord
-        fields = ['id','name','status','session']
+        fields = ['id', 'name', 'status', 'session']
 
 class ViewAttendanceRecordStudentSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='student.name', read_only=True)

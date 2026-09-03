@@ -1,4 +1,5 @@
 from rest_framework import filters
+from django.db.models import Q
 
 class InstituteFilterBackend(filters.BaseFilterBackend):
     """
@@ -18,22 +19,30 @@ class InstituteFilterBackend(filters.BaseFilterBackend):
 
         # 1. Direct institute relation (UserData, Batch, Subject, Fee, TimeTable, Exam, AttendanceSession)
         if hasattr(model, 'institute'):
-            return queryset.filter(institute=user.institute)
+            if user.institute:
+                return queryset.filter(Q(institute=user.institute) | Q(institute__isnull=True))
+            return queryset
 
         # 2. Indirect relations through parent models
         # E.g. Mark -> exam -> institute
         if hasattr(model, 'exam'):
-            return queryset.filter(exam__institute=user.institute)
+            if user.institute:
+                return queryset.filter(Q(exam__institute=user.institute) | Q(exam__institute__isnull=True))
+            return queryset
 
         # E.g. Payment -> fee -> institute
         if hasattr(model, 'fee'):
-            return queryset.filter(fee__institute=user.institute)
+            if user.institute:
+                return queryset.filter(Q(fee__institute=user.institute) | Q(fee__institute__isnull=True))
+            return queryset
 
         # E.g. AttendanceRecord -> session -> institute
         if hasattr(model, 'session'):
-            return queryset.filter(session__institute=user.institute)
+            if user.institute:
+                return queryset.filter(Q(session__institute=user.institute) | Q(session__institute__isnull=True))
+            return queryset
 
-        # Fallback for other tables: do not filter (or return empty if you want strict security)
+        # Fallback for other tables: do not filter
         return queryset
 
 

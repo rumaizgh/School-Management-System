@@ -172,10 +172,48 @@ class AttendanceRecordView(APIView):
         return AttendanceRecordSerializer
 
     def get(self, request, id):
-        session = get_institute_scoped_object_or_404(AttendanceSession, request, id=id)
-        status = request.GET.get("status")
-        record = AttendanceRecord.objects.filter(session=session)
-        serializer = self.get_serializer_class()(record, many=True)
+        session_qs = AttendanceSession.objects.filter(id=id)
+        if session_qs.exists():
+            session = session_qs.first()
+            if request.user.institute and session.institute and session.institute != request.user.institute and not request.user.is_superuser:
+                return Response({"error": "You do not have permission to access this session."}, status=status.HTTP_403_FORBIDDEN)
+            records = AttendanceRecord.objects.filter(session=session)
+        else:
+            student_qs = UserData.objects.filter(id=id, user_type='student')
+            if student_qs.exists():
+                student = student_qs.first()
+                if request.user.institute and student.institute and student.institute != request.user.institute and not request.user.is_superuser:
+                    return Response({"error": "You do not have permission to access this student."}, status=status.HTTP_403_FORBIDDEN)
+                records = AttendanceRecord.objects.filter(student=student)
+            else:
+                record_qs = AttendanceRecord.objects.filter(id=id)
+                if record_qs.exists():
+                    records = record_qs
+                else:
+                    return Response({"detail": f"No AttendanceSession, Student, or Record matches ID {id}."}, status=status.HTTP_404_NOT_FOUND)
+
+        status_param = request.GET.get("status")
+        if status_param:
+            records = records.filter(status=status_param)
+
+        student_param = request.GET.get("student") or request.GET.get("student_id")
+        if student_param:
+            records = records.filter(student_id=student_param)
+
+        date_param = request.GET.get("date")
+        if date_param:
+            records = records.filter(session__date=date_param)
+
+        records = InstituteFilterBackend().filter_queryset(request, records, None)
+        records = records.select_related(
+            'student',
+            'session',
+            'session__teacher',
+            'session__subject',
+            'session__classs'
+        )
+
+        serializer = self.get_serializer_class()(records, many=True)
         return Response(serializer.data)
 
     def patch(self, request, id):
@@ -206,7 +244,7 @@ class StudentAttendanceView(APIView):
         records = AttendanceRecord.objects.filter(
             student=request.user,
             session__date=today
-        )
+        ).select_related('student', 'session', 'session__teacher', 'session__subject', 'session__classs')
 
         if status:
             records = records.filter(status=status)
@@ -224,6 +262,7 @@ class TeacherStudentAttendanceView(APIView):
         classs_id = request.GET.get("class")
         records = AttendanceRecord.objects.filter(student=student,session__teacher=request.user,session__classs=classs_id)
         records = InstituteFilterBackend().filter_queryset(request, records, None)
+        records = records.select_related('student', 'session', 'session__teacher', 'session__subject', 'session__classs')
         serializer = AttendanceRecordStudentSerializer(records, many=True)
         return Response(serializer.data)
 

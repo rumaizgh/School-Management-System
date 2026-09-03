@@ -16,6 +16,7 @@ class NotificationHistorySerializer(serializers.ModelSerializer):
 class SendBroadcastSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=150, required=True)
     body = serializers.CharField(required=True)
+    type = serializers.CharField(required=False, default='general_announcement')
     target_type = serializers.ChoiceField(
         choices=['all', 'class', 'section', 'user'],
         default='all'
@@ -26,3 +27,4 @@ class SendBroadcastSerializer(serializers.Serializer):
         default=list
     )
     data_payload = serializers.DictField(required=False, default=dict)
+

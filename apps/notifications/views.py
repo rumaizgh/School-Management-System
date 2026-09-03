@@ -146,6 +146,7 @@ class SendBroadcastView(APIView):
 
         title = serializer.validated_data['title']
         body = serializer.validated_data['body']
+        notif_type = serializer.validated_data.get('type')
         target_type = serializer.validated_data['target_type']
         target_ids = serializer.validated_data['target_ids']
         data_payload = serializer.validated_data.get('data_payload', {})
@@ -176,7 +177,7 @@ class SendBroadcastView(APIView):
             user_ids=target_user_ids,
             title=title,
             body=body,
-            notification_type='general_announcement',
+            notification_type=notif_type,
             screen=screen,
             extra_data=extra_data,
             save_to_history=True

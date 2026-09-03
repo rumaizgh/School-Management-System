@@ -23,6 +23,7 @@ from django.utils import timezone
 from apps.account.pagination import CustomPagination
 from apps.notifications.services import (
     send_fee_assigned_notification,
+    send_fee_updated_notification,
     send_payment_success_notification,
     send_exam_scheduled_notification,
     send_marks_released_notification,
@@ -299,7 +300,8 @@ class FeeListCreateAPIView(APIView):
         fee = get_institute_scoped_object_or_404(Fee, request, id=id)
         serializer = FeeSerializer(fee, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()
+            updated_fee = serializer.save()
+            send_fee_updated_notification(updated_fee)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
