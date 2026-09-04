@@ -1,7 +1,7 @@
+from django.utils import timezone
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.core.paginator import Paginator
 from django.db import models
 from apps.account.models import UserData
 from apps.account.pagination import CustomPagination
@@ -99,7 +99,14 @@ class MarkNotificationReadView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        now = timezone.now()
         notification.is_read = True
+        notification.delivery_status = NotificationHistory.STATUS_READ
+        if not notification.read_at:
+            notification.read_at = now
+        # Ensure delivered_at is also set if somehow missed
+        if not notification.delivered_at:
+            notification.delivered_at = now
         notification.save()
 
         return Response(
@@ -115,12 +122,123 @@ class MarkAllNotificationsReadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request):
-        NotificationHistory.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        now = timezone.now()
+        NotificationHistory.objects.filter(
+            user=request.user,
+            is_read=False
+        ).update(
+            is_read=True,
+            delivery_status=NotificationHistory.STATUS_READ,
+            read_at=now
+        )
 
         return Response(
             {
                 "status": "success",
                 "message": "All notifications marked as read."
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NEW: Mark notification as delivered (device background ping)
+# POST /api/notifications/{notification_id}/delivered/
+# ─────────────────────────────────────────────────────────────────────────────
+class MarkNotificationDeliveredView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            notification = NotificationHistory.objects.get(id=pk, user=request.user)
+        except NotificationHistory.DoesNotExist:
+            return Response(
+                {"status": "error", "message": "Notification ID does not exist."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Only update if not already READ (don't downgrade status)
+        if notification.delivery_status == NotificationHistory.STATUS_PENDING:
+            notification.delivery_status = NotificationHistory.STATUS_DELIVERED
+            notification.delivered_at = timezone.now()
+            notification.save()
+
+        return Response(
+            {
+                "status": "success",
+                "message": "Notification marked as delivered."
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NEW: Broadcast Delivery & Read Status (Admin only)
+# GET /api/notifications/broadcast/{broadcast_id}/status/
+# ─────────────────────────────────────────────────────────────────────────────
+class BroadcastStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, broadcast_id):
+        # Admin-only guard
+        if not (request.user.is_superuser or request.user.user_type in ['admin', 'superadmin'] or request.user.is_staff):
+            return Response(
+                {"status": "error", "message": "Permission denied. Administrators only."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        records = NotificationHistory.objects.filter(
+            broadcast_id=broadcast_id
+        ).select_related('user')
+
+        if not records.exists():
+            return Response(
+                {"status": "error", "message": "Broadcast ID not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Grab meta from the first record (all share title/body/sent_at)
+        first = records.first()
+
+        total = records.count()
+        read_count = records.filter(delivery_status=NotificationHistory.STATUS_READ).count()
+        delivered_count = records.filter(delivery_status=NotificationHistory.STATUS_DELIVERED).count()
+        pending_count = records.filter(delivery_status=NotificationHistory.STATUS_PENDING).count()
+
+        recipients = []
+        for rec in records.order_by('created_at'):
+            user = rec.user
+            # Resolve class name (students have a classs M2M; teachers/admins may not)
+            class_name = None
+            if user.user_type == 'student':
+                batch = user.classs.first()
+                if batch:
+                    class_name = str(batch)
+
+            recipients.append({
+                "user_id": user.id,
+                "user_name": user.name or user.email,
+                "role": user.user_type.capitalize(),
+                "class_name": class_name,
+                "status": rec.delivery_status,
+                "delivered_at": rec.delivered_at.isoformat() if rec.delivered_at else None,
+                "read_at": rec.read_at.isoformat() if rec.read_at else None,
+            })
+
+        return Response(
+            {
+                "status": "success",
+                "data": {
+                    "broadcast_id": broadcast_id,
+                    "title": first.title,
+                    "body": first.body,
+                    "sent_at": first.created_at.isoformat(),
+                    "total_targeted": total,
+                    "read_count": read_count,
+                    "delivered_count": delivered_count,
+                    "pending_count": pending_count,
+                    "recipients": recipients,
+                }
             },
             status=status.HTTP_200_OK
         )
@@ -187,6 +305,7 @@ class SendBroadcastView(APIView):
             {
                 "status": "success",
                 "message": "Broadcast dispatched successfully.",
+                "broadcast_id": result.get("broadcast_id"),
                 "target_user_count": len(target_user_ids),
                 "details": result
             },

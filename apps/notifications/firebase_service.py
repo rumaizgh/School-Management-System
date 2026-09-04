@@ -1,4 +1,5 @@
 import os
+import uuid
 import logging
 from django.conf import settings
 try:
@@ -63,6 +64,7 @@ def send_fcm_notification(
 
     # 1. Save to NotificationHistory for in-app notification center
     saved_history_records = []
+    broadcast_id = f"notif_{uuid.uuid4().hex[:12]}"
     if save_to_history and user_ids:
         data_payload = {}
         if screen:
@@ -78,6 +80,7 @@ def send_fcm_notification(
                 title=title,
                 body=body,
                 type=notification_type,
+                broadcast_id=broadcast_id,
                 data_payload=data_payload
             )
             for user in target_users
@@ -132,15 +135,24 @@ def send_fcm_notification(
         success_count = response.success_count
         failure_count = response.failure_count
 
-        # Clean up invalid/unregistered tokens
+        # Clean up invalid/unregistered tokens (FCM HTTP v1 error codes)
         if failure_count > 0:
             failed_tokens = []
+            invalid_err_codes = {
+                "UNREGISTERED",
+                "INVALID_ARGUMENT",
+                "messaging/registration-token-not-registered",
+                "messaging/invalid-registration-token",
+                "NotRegistered",
+                "InvalidRegistration",
+            }
             for idx, resp in enumerate(response.responses):
                 if not resp.success:
                     err_code = resp.exception.code if resp.exception else ""
-                    if err_code in ["UNREGISTERED", "INVALID_ARGUMENT"] or "not registered" in str(resp.exception).lower():
+                    err_str = str(resp.exception).lower()
+                    if err_code in invalid_err_codes or "not registered" in err_str or "invalid registration" in err_str:
                         failed_tokens.append(tokens_list[idx])
-            
+
             if failed_tokens:
                 deleted_count = UserDevice.objects.filter(device_token__in=failed_tokens).delete()[0]
                 logger.info(f"Cleaned up {deleted_count} invalid FCM tokens from database.")
@@ -149,6 +161,7 @@ def send_fcm_notification(
         logger.error(f"Error dispatching FCM message: {e}")
 
     return {
+        "broadcast_id": broadcast_id,
         "success_count": success_count,
         "failure_count": failure_count,
         "history_created": len(saved_history_records)

@@ -32,7 +32,18 @@ class UserDevice(models.Model):
 
 
 class NotificationHistory(models.Model):
+    STATUS_PENDING = 'PENDING'
+    STATUS_DELIVERED = 'DELIVERED'
+    STATUS_READ = 'READ'
+    DELIVERY_STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_DELIVERED, 'Delivered'),
+        (STATUS_READ, 'Read'),
+    ]
+
     id = models.CharField(max_length=100, primary_key=True, default=generate_notif_id, editable=False)
+    # Groups all per-recipient records that were sent from a single broadcast
+    broadcast_id = models.CharField(max_length=100, null=True, blank=True, db_index=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -42,6 +53,13 @@ class NotificationHistory(models.Model):
     body = models.TextField()
     type = models.CharField(max_length=50, default='general_announcement')
     is_read = models.BooleanField(default=False)
+    delivery_status = models.CharField(
+        max_length=10,
+        choices=DELIVERY_STATUS_CHOICES,
+        default=STATUS_PENDING
+    )
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    read_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     data_payload = models.JSONField(default=dict, blank=True)
 
