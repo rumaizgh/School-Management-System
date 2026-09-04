@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'apps.notifications',
     'apps.web_admin',
     'apps.payroll',
+    'apps.reports',
 ]
 
 REST_FRAMEWORK = {
