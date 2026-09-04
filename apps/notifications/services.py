@@ -357,3 +357,110 @@ def send_salary_disbursement_notification(payment):
     except Exception as e:
         logger.error(f"Error in send_salary_disbursement_notification: {e}", exc_info=True)
         return None
+
+
+def send_chapter_completion_notification(chapter):
+    """
+    Task B: Triggered when a chapter status is set to 'completed'
+    and notify_students_on_completion is True.
+    Sends notification to all active students (and parents) in the subject's class.
+    """
+    try:
+        if not chapter or not chapter.notify_students_on_completion:
+            return None
+
+        subject = chapter.subject
+        if not subject or not subject.classs:
+            return None
+
+        batch = subject.classs
+        target_students = UserData.objects.filter(
+            classs=batch,
+            user_type='student',
+            is_active=True
+        ).distinct()
+
+        user_ids = list(target_students.values_list('id', flat=True))
+        if not user_ids:
+            return None
+
+        title = f"🎉 Chapter Completed in {subject.subject_name}!"
+        body = f'Great progress! Chapter {chapter.chapter_number}: "{chapter.chapter_title}" has been completed by your teacher.'
+
+        data_payload = {
+            "type": "syllabus_chapter_completed",
+            "subject_id": str(subject.id),
+            "chapter_id": str(chapter.id)
+        }
+
+        return send_fcm_notification(
+            user_ids=user_ids,
+            title=title,
+            body=body,
+            notification_type="syllabus_chapter_completed",
+            screen="chapter_detail",
+            extra_data=data_payload,
+            save_to_history=True
+        )
+    except Exception as e:
+        logger.error(f"Error in send_chapter_completion_notification: {e}", exc_info=True)
+        return None
+
+
+def send_syllabus_due_reminders():
+    """
+    Task A: Scheduled Teacher Due Date Reminders (Cron / Daily Task).
+    Queries chapters where reminder_enabled is True, status is not completed,
+    and target_date is exactly reminder_days_before days away from current date.
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    from apps.subject.models import Chapter
+
+    try:
+        today = timezone.localdate()
+        reminders_sent = 0
+
+        # Retrieve uncompleted chapters with reminders enabled
+        chapters = Chapter.objects.filter(
+            reminder_enabled=True,
+            target_date__isnull=False
+        ).exclude(status='completed').select_related('subject', 'subject__teacher')
+
+        for chapter in chapters:
+            due_date = chapter.target_date
+            reminder_days = chapter.reminder_days_before
+            if due_date and (due_date - today) == timedelta(days=reminder_days):
+                teacher = chapter.subject.teacher if chapter.subject else None
+                if not teacher or not teacher.is_active:
+                    continue
+
+                title = "⏰ Syllabus Reminder: Chapter Due Soon"
+                body = (
+                    f'Chapter {chapter.chapter_number}: "{chapter.chapter_title}" '
+                    f'in {chapter.subject.subject_name} is due in {reminder_days} days ({due_date.strftime("%Y-%m-%d")}).'
+                )
+
+                data_payload = {
+                    "type": "syllabus_due_reminder",
+                    "subject_id": str(chapter.subject.id),
+                    "chapter_id": str(chapter.id)
+                }
+
+                send_fcm_notification(
+                    user_ids=[teacher.id],
+                    title=title,
+                    body=body,
+                    notification_type="syllabus_due_reminder",
+                    screen="chapter_detail",
+                    extra_data=data_payload,
+                    save_to_history=True
+                )
+                reminders_sent += 1
+
+        logger.info(f"Syllabus due date reminders job executed successfully. Sent {reminders_sent} reminders.")
+        return reminders_sent
+    except Exception as e:
+        logger.error(f"Error executing send_syllabus_due_reminders: {e}", exc_info=True)
+        return 0
+
