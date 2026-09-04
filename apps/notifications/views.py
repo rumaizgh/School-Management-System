@@ -244,6 +244,70 @@ class BroadcastStatusView(APIView):
         )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# DELETE a single notification record
+# DELETE /api/notifications/{id}/delete/
+# Any authenticated user can delete their own notification.
+# ─────────────────────────────────────────────────────────────────────────────
+class DeleteNotificationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            notification = NotificationHistory.objects.get(id=pk, user=request.user)
+        except NotificationHistory.DoesNotExist:
+            return Response(
+                {"detail": "Notification not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        notification.delete()
+        return Response(
+            {
+                "status": "success",
+                "message": "Notification deleted successfully"
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Admin: DELETE an entire broadcast (all per-recipient records)
+# DELETE /api/notifications/broadcast/{broadcast_id}/delete/
+# Only admins / superadmins / staff can use this.
+# ─────────────────────────────────────────────────────────────────────────────
+class DeleteBroadcastView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, broadcast_id):
+        # Admin-only guard
+        if not (
+            request.user.is_superuser
+            or request.user.user_type in ['admin', 'superadmin']
+            or request.user.is_staff
+        ):
+            return Response(
+                {"status": "error", "message": "Permission denied. Administrators only."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        records = NotificationHistory.objects.filter(broadcast_id=broadcast_id)
+        if not records.exists():
+            return Response(
+                {"detail": "Notification not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        deleted_count, _ = records.delete()
+        return Response(
+            {
+                "status": "success",
+                "message": f"Broadcast deleted successfully. {deleted_count} notification record(s) removed."
+            },
+            status=status.HTTP_200_OK
+        )
+
+
 class SendBroadcastView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

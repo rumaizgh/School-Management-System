@@ -7,6 +7,8 @@ from .views import (
     MarkNotificationDeliveredView,
     BroadcastStatusView,
     SendBroadcastView,
+    DeleteNotificationView,
+    DeleteBroadcastView,
 )
 
 urlpatterns = [
@@ -30,4 +32,10 @@ urlpatterns = [
 
     # Admin Broadcast Delivery & Read Status
     path('broadcast/<str:broadcast_id>/status/', BroadcastStatusView.as_view(), name='broadcast-status'),
+
+    # Delete a single notification (any authenticated user, own record only)
+    path('<str:pk>/delete/', DeleteNotificationView.as_view(), name='delete-notification'),
+
+    # Admin: Delete an entire broadcast by broadcast_id
+    path('broadcast/<str:broadcast_id>/delete/', DeleteBroadcastView.as_view(), name='delete-broadcast'),
 ]
