@@ -196,10 +196,11 @@ class MarkSerializer(serializers.ModelSerializer):
     batch_name = serializers.CharField(source='exam.batch.classs', read_only=True)
     student_name = serializers.CharField(source='student.name', read_only=True)
     student_image = serializers.SerializerMethodField()
+    grade = serializers.SerializerMethodField()
     
     class Meta:
         model = Mark
-        fields = ['id', 'exam', 'exam_name', 'subject', 'subject_name', 'student', 'student_name', 'student_image', 'batch', 'batch_name', 'total_mark', 'obtained_mark', 'percentage']
+        fields = ['id', 'exam', 'exam_name', 'subject', 'subject_name', 'student', 'student_name', 'student_image', 'batch', 'batch_name', 'total_mark', 'obtained_mark', 'percentage', 'grade']
         read_only_fields = ['id', 'subject', 'subject_name', 'batch', 'batch_name', 'total_mark', 'percentage']
 
     def get_student_image(self, obj):
@@ -209,6 +210,16 @@ class MarkSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.student.profile.url)
             return obj.student.profile.url
         return None
+
+    def get_grade(self, obj):
+        if not obj.exam or obj.percentage is None or not obj.exam.institute:
+            return None
+        grade = Grade.objects.filter(
+            institute=obj.exam.institute,
+            min_percentage__lte=obj.percentage,
+            max_percentage__gte=obj.percentage,
+        ).first()
+        return grade.grade if grade else None
 
     def validate(self, data):
         exam = data.get('exam') if data.get('exam') is not None else (self.instance.exam if getattr(self, 'instance', None) else None)

@@ -403,6 +403,9 @@ class StudentReportView(APIView):
         grades = list(Grade.objects.filter(institute=institute)) if institute else []
 
         exam_results = []
+        total_obtained_marks = 0.0
+        total_possible_marks = 0.0
+        passed_exams = 0
         for m in mark_qs:
             exam = m.exam
             if not exam:
@@ -417,6 +420,10 @@ class StudentReportView(APIView):
                 raw_percentage = (obtained / total_mark) * 100
                 percentage = _round_or_null(raw_percentage)
                 grade = _grade_for_percentage(grades, raw_percentage)
+                total_obtained_marks += obtained
+                total_possible_marks += total_mark
+                if is_pass:
+                    passed_exams += 1
             else:
                 is_pass = None
                 percentage = None
@@ -482,6 +489,26 @@ class StudentReportView(APIView):
                 "trend": trend,
             })
 
+            subject_total_marks = sum(
+                float(mark.exam.total_mark)
+                for mark in marks
+                if mark.exam and mark.exam.total_mark
+            )
+            subject_obtained_marks = sum(
+                float(mark.obtained_mark)
+                for mark in marks
+                if mark.obtained_mark is not None
+            )
+            subject_percentage = (
+                (subject_obtained_marks / subject_total_marks) * 100
+                if subject_total_marks > 0 else None
+            )
+            subject_wise_performance[-1].update({
+                "total_marks": subject_total_marks,
+                "obtained_marks": subject_obtained_marks,
+                "grade": _grade_for_percentage(grades, subject_percentage),
+            })
+
         # ── Prediction ───────────────────────────────────────────────────────
         total_exams = len(exam_results)
         prediction = None
@@ -520,10 +547,35 @@ class StudentReportView(APIView):
             }
 
         return Response({
+            "student": {
+                "id": student.id,
+                "name": student.name,
+                "email": student.email,
+                "roll_no": student.roll_no,
+                "phone": student.phone,
+                "profile": request.build_absolute_uri(student.profile.url) if student.profile else None,
+                "batches": [str(batch) for batch in student_batches],
+            },
             "overall_attendance_rate": overall_attendance_rate,
             "total_classes_held": total_classes_held,
             "classes_attended": classes_attended,
             "classes_absent": classes_absent,
+            "overall_performance": {
+                "total_marks": total_possible_marks,
+                "obtained_marks": total_obtained_marks,
+                "percentage": _round_or_null(
+                    (total_obtained_marks / total_possible_marks) * 100
+                    if total_possible_marks > 0 else None
+                ),
+                "grade": _grade_for_percentage(
+                    grades,
+                    (total_obtained_marks / total_possible_marks) * 100
+                    if total_possible_marks > 0 else None,
+                ),
+                "total_exams": len(exam_results),
+                "passed_exams": passed_exams,
+                "failed_exams": len(exam_results) - passed_exams,
+            },
             "exam_results": exam_results,
             "subject_wise_performance": subject_wise_performance,
             "prediction": prediction,
