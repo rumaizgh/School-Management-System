@@ -18,6 +18,7 @@ class AttendanceSession(models.Model):
     )
     date = models.DateField(default=timezone.localdate)
     time = models.TimeField()
+    end_time = models.TimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.institute:
