@@ -10,7 +10,19 @@ class DeviceTokenSerializer(serializers.Serializer):
 class NotificationHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = NotificationHistory
-        fields = ['id', 'title', 'body', 'type', 'is_read', 'created_at', 'data_payload']
+        fields = [
+            'id',
+            'broadcast_id',
+            'title',
+            'body',
+            'type',
+            'is_read',
+            'delivery_status',
+            'delivered_at',
+            'read_at',
+            'created_at',
+            'data_payload',
+        ]
 
 
 class SendBroadcastSerializer(serializers.Serializer):

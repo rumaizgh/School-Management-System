@@ -92,7 +92,12 @@ def send_fcm_notification(
     devices = UserDevice.objects.filter(user_id__in=user_ids)
     if not devices.exists():
         logger.info(f"No active device tokens found for user_ids: {user_ids}")
-        return {"success_count": 0, "failure_count": 0, "history_created": len(saved_history_records)}
+        return {
+            "broadcast_id": broadcast_id,
+            "success_count": 0,
+            "failure_count": 0,
+            "history_created": len(saved_history_records)
+        }
 
     tokens_list = list(devices.values_list('device_token', flat=True))
 

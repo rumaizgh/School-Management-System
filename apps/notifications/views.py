@@ -192,6 +192,19 @@ class BroadcastStatusView(APIView):
         ).select_related('user')
 
         if not records.exists():
+            # Fallback: support looking up by individual notification ID
+            single = NotificationHistory.objects.filter(id=broadcast_id).first()
+            if single:
+                if single.broadcast_id:
+                    records = NotificationHistory.objects.filter(
+                        broadcast_id=single.broadcast_id
+                    ).select_related('user')
+                else:
+                    records = NotificationHistory.objects.filter(
+                        id=single.id
+                    ).select_related('user')
+
+        if not records.exists():
             return Response(
                 {"status": "error", "message": "Broadcast ID not found."},
                 status=status.HTTP_404_NOT_FOUND
@@ -293,6 +306,14 @@ class DeleteBroadcastView(APIView):
 
         records = NotificationHistory.objects.filter(broadcast_id=broadcast_id)
         if not records.exists():
+            single = NotificationHistory.objects.filter(id=broadcast_id).first()
+            if single:
+                if single.broadcast_id:
+                    records = NotificationHistory.objects.filter(broadcast_id=single.broadcast_id)
+                else:
+                    records = NotificationHistory.objects.filter(id=single.id)
+
+        if not records.exists():
             return Response(
                 {"detail": "Notification not found."},
                 status=status.HTTP_404_NOT_FOUND
@@ -371,7 +392,11 @@ class SendBroadcastView(APIView):
                 "message": "Broadcast dispatched successfully.",
                 "broadcast_id": result.get("broadcast_id"),
                 "target_user_count": len(target_user_ids),
-                "details": result
+                "details": {
+                    "success_count": result.get("success_count", 0),
+                    "failure_count": result.get("failure_count", 0),
+                    "history_created": result.get("history_created", 0),
+                }
             },
             status=status.HTTP_200_OK
         )

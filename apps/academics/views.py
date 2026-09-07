@@ -272,24 +272,24 @@ class FeeListCreateAPIView(APIView):
 
     def get(self, request, id=None):
         if id:
-            fees = get_institute_scoped_object_or_404(Fee, request, id=id, student__user_type="student")
-            serializer = FeeSerializer(fees)
+            fees = get_institute_scoped_object_or_404(Fee, request, id=id, student__user_type="student", student__is_active=True)
+            serializer = FeeSerializer(fees, context={'request': request})
             return Response(serializer.data)
-        fees = Fee.objects.all()
+        fees = Fee.objects.filter(student__user_type="student", student__is_active=True)
         fees = InstituteFilterBackend().filter_queryset(request, fees, None)
         fees = apply_fee_filters_and_ordering(fees, request)
-        serializer = FeeSerializer(fees, many=True)
+        serializer = FeeSerializer(fees, many=True, context={'request': request})
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = FeeSerializer(data=request.data)
+        serializer = FeeSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            fee = serializer.save(institute=request.user.institute)
-
-            if fee.student.user_type != "student":
+            student = serializer.validated_data.get('student')
+            if student and student.user_type != "student":
                 return Response(
-                    {"error": "Fee can be created only for students"},status=400)
+                    {"error": "Fee can be created only for students"}, status=400)
 
+            fee = serializer.save(institute=request.user.institute)
             send_fee_assigned_notification(fee)
 
             return Response(serializer.data, status=201)
@@ -298,7 +298,7 @@ class FeeListCreateAPIView(APIView):
     
     def patch(self, request, id):
         fee = get_institute_scoped_object_or_404(Fee, request, id=id)
-        serializer = FeeSerializer(fee, data=request.data, partial=True)
+        serializer = FeeSerializer(fee, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             updated_fee = serializer.save()
             send_fee_updated_notification(updated_fee)
@@ -307,7 +307,12 @@ class FeeListCreateAPIView(APIView):
     
 class ViewFee(APIView):
     def get(self, request, classs_id):
-        fees = Fee.objects.filter(batch=classs_id)
+        fees = Fee.objects.filter(
+            batch_id=classs_id,
+            student__classs=classs_id,
+            student__is_active=True,
+            student__user_type="student"
+        )
         fees = InstituteFilterBackend().filter_queryset(request, fees, None)
         fees = apply_fee_filters_and_ordering(fees, request)
 
@@ -317,7 +322,7 @@ class ViewFee(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = FeeSerializer(fees, many=True)
+        serializer = FeeSerializer(fees, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class CreatePayment(APIView):
