@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Batch,Fee,TimeTable,Payment,Mark,Institute,Exam,Payroll
+from .models import Batch,Fee,TimeTable,Payment,Mark,Institute,Exam,Payroll,Grade
 from apps.account.models import UserData
 from django.db.models import Count, Q, Sum
 
@@ -7,6 +7,41 @@ class InstituteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Institute
         fields = '__all__'
+
+
+class GradeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Grade
+        fields = ['id', 'institute', 'grade', 'min_percentage', 'max_percentage', 'order']
+        read_only_fields = ['id', 'institute']
+
+    def validate(self, data):
+        minimum = data.get(
+            'min_percentage',
+            self.instance.min_percentage if self.instance else None,
+        )
+        maximum = data.get(
+            'max_percentage',
+            self.instance.max_percentage if self.instance else None,
+        )
+        if minimum is not None and maximum is not None and minimum > maximum:
+            raise serializers.ValidationError({
+                'min_percentage': 'min_percentage cannot be greater than max_percentage.'
+            })
+
+        institute = self.instance.institute if self.instance else self.context['request'].user.institute
+        overlapping = Grade.objects.filter(
+            institute=institute,
+            min_percentage__lte=maximum,
+            max_percentage__gte=minimum,
+        )
+        if self.instance:
+            overlapping = overlapping.exclude(pk=self.instance.pk)
+        if overlapping.exists():
+            raise serializers.ValidationError(
+                'The percentage range overlaps an existing grade for this institute.'
+            )
+        return data
 
 class PayrollSerializer(serializers.ModelSerializer):
     teacher_name = serializers.CharField(source='teacher.name', read_only=True)

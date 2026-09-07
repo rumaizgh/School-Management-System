@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,LatestAssignedFeesAPIView,ExportFee,FeeExportPreview,ExportMark,MarkExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksAPIView, StudentExamListAPIView, StudentExamAnalyticsAPIView, PayrollViewSet
+from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,LatestAssignedFeesAPIView,ExportFee,FeeExportPreview,ExportMark,MarkExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, GradeListCreateAPIView, GradeDetailAPIView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksAPIView, StudentExamListAPIView, StudentExamAnalyticsAPIView, PayrollViewSet
 from django.urls import path, include, re_path
 
 router = DefaultRouter()
@@ -9,6 +9,8 @@ urlpatterns = [
     path('', include(router.urls)),
     path('institute/', InstituteView.as_view()),
     path('institute/<int:id>/', InstituteView.as_view()),
+    path('grades/', GradeListCreateAPIView.as_view(), name='grade-list-create'),
+    path('grades/<int:grade_id>/', GradeDetailAPIView.as_view(), name='grade-detail'),
     path('class/teacher/', ViewAllClassTeacher.as_view()),
     path('class/', CreateClass.as_view()),
     path('class/<int:id>/', CreateClass.as_view()),

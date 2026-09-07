@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 
 from apps.account.models import UserData
-from apps.academics.models import Batch, Exam
+from apps.academics.models import Batch, Exam, Grade
 from apps.attendance.models import AttendanceSession, AttendanceRecord
 from apps.subject.models import Subject, Chapter
 from apps.academics.models import Mark
@@ -339,6 +339,15 @@ def _trend(percentages):
         return "stable"
 
 
+def _grade_for_percentage(grades, percentage):
+    if percentage is None:
+        return None
+    for grade in grades:
+        if float(grade.min_percentage) <= percentage <= float(grade.max_percentage):
+            return grade.grade
+    return None
+
+
 class StudentReportView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -391,6 +400,7 @@ class StudentReportView(APIView):
             .select_related('exam', 'exam__subject', 'exam__timetable')
             .order_by('id')
         )
+        grades = list(Grade.objects.filter(institute=institute)) if institute else []
 
         exam_results = []
         for m in mark_qs:
@@ -404,10 +414,13 @@ class StudentReportView(APIView):
 
             if obtained is not None and total_mark:
                 is_pass = obtained >= (pass_mark or 0)
-                percentage = _round_or_null((obtained / total_mark) * 100)
+                raw_percentage = (obtained / total_mark) * 100
+                percentage = _round_or_null(raw_percentage)
+                grade = _grade_for_percentage(grades, raw_percentage)
             else:
                 is_pass = None
                 percentage = None
+                grade = None
 
             # Date from timetable if available
             exam_date = ""
@@ -425,6 +438,7 @@ class StudentReportView(APIView):
                 "pass_mark": pass_mark,
                 "is_pass": is_pass,
                 "percentage": percentage,
+                "grade": grade,
             })
 
         # ── Subject-wise performance ─────────────────────────────────────────

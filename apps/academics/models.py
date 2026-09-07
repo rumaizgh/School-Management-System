@@ -16,6 +16,38 @@ class Institute(models.Model):
     def __str__(self):
         return self.name
 
+
+class Grade(models.Model):
+    institute = models.ForeignKey(
+        Institute,
+        on_delete=models.CASCADE,
+        related_name='grades',
+    )
+    grade = models.CharField(max_length=10)
+    min_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    max_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-min_percentage', 'order', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['institute', 'grade'],
+                name='unique_grade_per_institute',
+            ),
+            models.CheckConstraint(
+                check=models.Q(min_percentage__gte=0, max_percentage__lte=100),
+                name='grade_percentages_between_zero_and_hundred',
+            ),
+            models.CheckConstraint(
+                check=models.Q(min_percentage__lte=models.F('max_percentage')),
+                name='grade_min_percentage_lte_max_percentage',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.grade} ({self.min_percentage}-{self.max_percentage}%)'
+
 class Batch(models.Model):
     institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='batches', null=True, blank=True)
     classs = models.CharField(max_length=10)

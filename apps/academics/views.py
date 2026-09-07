@@ -4,8 +4,8 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticate
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import status, viewsets
-from .models import Batch, Fee, Payment, Mark, Institute, Exam, Payroll
-from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer,InstituteSerializer, ExamSerializer, ExamAnalyticsSerializer, BulkMarkSerializer, PayrollSerializer
+from .models import Batch, Fee, Payment, Mark, Institute, Exam, Payroll, Grade
+from .serializers import BatchSerializer,PaymentSerializer,FeeSerializer,MarkSerializer,InstituteSerializer, ExamSerializer, ExamAnalyticsSerializer, BulkMarkSerializer, PayrollSerializer, GradeSerializer
 from apps.account.serializers import UserDataSerializer
 from apps.academics.serializers import TimeTableSerializer
 from .permissions import IsAdmin,IsTeacher,IsTeacherOrAdmin
@@ -675,6 +675,52 @@ class InstituteView(APIView):
         institute = get_institute_scoped_object_or_404(Institute, request, id=id)
         institute.delete()
         return Response({"message": "Institute deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+
+class GradeListCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        grades = Grade.objects.all()
+        grades = InstituteFilterBackend().filter_queryset(request, grades, None)
+        return Response(GradeSerializer(grades, many=True).data)
+
+    def post(self, request):
+        if not (request.user.user_type == 'admin' or request.user.is_superuser):
+            return Response({'detail': 'Only admins can configure grades.'}, status=status.HTTP_403_FORBIDDEN)
+        if request.user.institute is None:
+            return Response({'detail': 'An institute is required to configure grades.'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = GradeSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            grade = serializer.save(institute=request.user.institute)
+            return Response(GradeSerializer(grade).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GradeDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request, grade_id):
+        return get_institute_scoped_object_or_404(Grade, request, id=grade_id)
+
+    def get(self, request, grade_id):
+        return Response(GradeSerializer(self.get_object(request, grade_id)).data)
+
+    def patch(self, request, grade_id):
+        if not (request.user.user_type == 'admin' or request.user.is_superuser):
+            return Response({'detail': 'Only admins can configure grades.'}, status=status.HTTP_403_FORBIDDEN)
+        grade = self.get_object(request, grade_id)
+        serializer = GradeSerializer(grade, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            return Response(GradeSerializer(serializer.save()).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, grade_id):
+        if not (request.user.user_type == 'admin' or request.user.is_superuser):
+            return Response({'detail': 'Only admins can configure grades.'}, status=status.HTTP_403_FORBIDDEN)
+        grade = self.get_object(request, grade_id)
+        grade.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ExamListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
