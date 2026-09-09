@@ -7,6 +7,7 @@ def generate_notif_id():
     return f"notif_{uuid.uuid4().hex[:12]}"
 
 
+
 class UserDevice(models.Model):
     DEVICE_TYPE_CHOICES = [
         ('android', 'Android'),
@@ -41,7 +42,6 @@ class NotificationHistory(models.Model):
         (STATUS_READ, 'Read'),
     ]
 
-    id = models.CharField(max_length=100, primary_key=True, default=generate_notif_id, editable=False)
     # Groups all per-recipient records that were sent from a single broadcast
     broadcast_id = models.CharField(max_length=100, null=True, blank=True, db_index=True)
     user = models.ForeignKey(

@@ -78,6 +78,10 @@ class NotificationHistoryView(APIView):
         if notif_type:
             notifications_qs = notifications_qs.filter(type=notif_type.strip())
 
+        broadcast_id = request.query_params.get('broadcast_id')
+        if broadcast_id:
+            notifications_qs = notifications_qs.filter(broadcast_id=broadcast_id.strip())
+
         paginator = CustomPagination()
         paginated_qs = paginator.paginate_queryset(notifications_qs, request)
         serializer = NotificationHistorySerializer(paginated_qs, many=True)
@@ -191,9 +195,9 @@ class BroadcastStatusView(APIView):
             broadcast_id=broadcast_id
         ).select_related('user')
 
-        if not records.exists():
+        if not records.exists() and (isinstance(broadcast_id, int) or str(broadcast_id).isdigit()):
             # Fallback: support looking up by individual notification ID
-            single = NotificationHistory.objects.filter(id=broadcast_id).first()
+            single = NotificationHistory.objects.filter(id=int(broadcast_id)).first()
             if single:
                 if single.broadcast_id:
                     records = NotificationHistory.objects.filter(
@@ -305,8 +309,8 @@ class DeleteBroadcastView(APIView):
             )
 
         records = NotificationHistory.objects.filter(broadcast_id=broadcast_id)
-        if not records.exists():
-            single = NotificationHistory.objects.filter(id=broadcast_id).first()
+        if not records.exists() and (isinstance(broadcast_id, int) or str(broadcast_id).isdigit()):
+            single = NotificationHistory.objects.filter(id=int(broadcast_id)).first()
             if single:
                 if single.broadcast_id:
                     records = NotificationHistory.objects.filter(broadcast_id=single.broadcast_id)
