@@ -16,13 +16,13 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 # Support both ALLOWED_HOSTS from env and hardcoded fallback
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='rumaiz.duckdns.org,.rumaiz.duckdns.org,talentpro.duckdns.org,api.enclass.in,127.0.0.1,localhost',
+    default='rumaiz.duckdns.org,.rumaiz.duckdns.org,talentpro.duckdns.org,enclass.duckdns.org,.enclass.duckdns.org,api.enclass.in,127.0.0.1,localhost',
     cast=Csv()
 )
 
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='https://rumaiz.duckdns.org,https://api.enclass.in',
+    default='https://rumaiz.duckdns.org,https://enclass.duckdns.org,http://enclass.duckdns.org,https://api.enclass.in,http://api.enclass.in',
     cast=Csv()
 )
 
