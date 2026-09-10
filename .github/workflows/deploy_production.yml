@@ -15,7 +15,6 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          password: ${{ secrets.PROD_PASSWORD }}
           script: |
             cd /var/www/enclass/app
             git config --global --add safe.directory /var/www/enclass/app
