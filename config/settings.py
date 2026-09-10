@@ -1,5 +1,6 @@
 """
 Django settings for config project.
+Production CI/CD Automated Deployment Active.
 """
 import os
 from pathlib import Path
