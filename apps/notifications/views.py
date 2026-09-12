@@ -192,25 +192,28 @@ class BroadcastStatusView(APIView):
             )
 
         records = NotificationHistory.objects.filter(
-            broadcast_id=broadcast_id
+            broadcast_id=broadcast_id,
+            user__is_active=True
         ).select_related('user')
 
         if not records.exists() and (isinstance(broadcast_id, int) or str(broadcast_id).isdigit()):
             # Fallback: support looking up by individual notification ID
-            single = NotificationHistory.objects.filter(id=int(broadcast_id)).first()
+            single = NotificationHistory.objects.filter(id=int(broadcast_id), user__is_active=True).first()
             if single:
                 if single.broadcast_id:
                     records = NotificationHistory.objects.filter(
-                        broadcast_id=single.broadcast_id
+                        broadcast_id=single.broadcast_id,
+                        user__is_active=True
                     ).select_related('user')
                 else:
                     records = NotificationHistory.objects.filter(
-                        id=single.id
+                        id=single.id,
+                        user__is_active=True
                     ).select_related('user')
 
         if not records.exists():
             return Response(
-                {"status": "error", "message": "Broadcast ID not found."},
+                {"status": "error", "message": "Broadcast ID not found or no active recipients."},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -358,8 +361,8 @@ class SendBroadcastView(APIView):
         target_ids = serializer.validated_data['target_ids']
         data_payload = serializer.validated_data.get('data_payload', {})
 
-        # Resolve target users
-        target_users_qs = UserData.objects.all()
+        # Resolve target users (only active users)
+        target_users_qs = UserData.objects.filter(is_active=True)
 
         # If admin belongs to an institute, filter users by institute
         if hasattr(request.user, 'institute') and request.user.institute:
@@ -377,6 +380,10 @@ class SendBroadcastView(APIView):
 
         target_user_ids = list(target_users_qs.values_list('id', flat=True))
 
+        # Always include sending admin so they have a history record marked as READ
+        if request.user.id and request.user.id not in target_user_ids:
+            target_user_ids.append(request.user.id)
+
         screen = data_payload.get('screen')
         extra_data = {k: v for k, v in data_payload.items() if k != 'screen'}
 
@@ -387,7 +394,8 @@ class SendBroadcastView(APIView):
             notification_type=notif_type,
             screen=screen,
             extra_data=extra_data,
-            save_to_history=True
+            save_to_history=True,
+            sender_user_id=request.user.id
         )
 
         return Response(

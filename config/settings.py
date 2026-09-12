@@ -94,10 +94,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Database — supports both DB_* (new) and POSTGRES_* (legacy) variable names
+_db_engine = config('DB_ENGINE', default='django.db.backends.postgresql')
+if _db_engine and not _db_engine.startswith('django.db.backends.') and '.' not in _db_engine:
+    _db_engine = f'django.db.backends.{_db_engine}'
+
 DATABASES = {
     'default': {
-        'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql'),
+        'ENGINE': _db_engine,
         'NAME': config('DB_NAME', default=config('POSTGRES_DB', default='postgres')),
         'USER': config('DB_USER', default=config('POSTGRES_USER', default='postgres')),
         'PASSWORD': config('DB_PASSWORD', default=config('POSTGRES_PASSWORD', default='postgres')),

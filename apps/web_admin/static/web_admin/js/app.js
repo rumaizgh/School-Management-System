@@ -124,7 +124,7 @@ async function populateModalDropdowns(modalId) {
       if (classSelects.length) {
         const classes = await apiFetch('/academics/class/');
         const options = '<option value="">-- Select Class Batch --</option>' +
-          (classes || []).map(c => `<option value="${c.id}">${c.classs}${c.section ? ' (' + c.section + ')' : ''} — ${c.year}</option>`).join('');
+          (classes || []).map(c => `<option value="${c.id}">${c.classs} — ${c.year}</option>`).join('');
         classSelects.forEach(s => { s.innerHTML = options; });
       }
     }
@@ -494,36 +494,34 @@ function renderTeachersTable(teachers) {
 async function loadClasses() {
   const tbody = document.getElementById('classesTableBody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading classes...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading classes...</td></tr>';
 
   try {
     const batches = await apiFetch('/academics/class/');
     if (!batches.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No classes found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No classes found.</td></tr>';
       return;
     }
 
     tbody.innerHTML = batches.map(b => `
       <tr>
         <td><strong>${b.classs}</strong></td>
-        <td>${b.section || 'N/A'}</td>
         <td>${b.year || 'N/A'}</td>
         <td>Batch #${b.id}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="openEditClassModal(${b.id}, '${b.classs}', '${b.section || ''}', '${b.year}')">Edit</button>
+          <button class="btn btn-sm btn-secondary" onclick="openEditClassModal(${b.id}, '${b.classs}', '${b.year}')">Edit</button>
           <button class="btn btn-sm btn-danger" onclick="deleteClass(${b.id})">Delete</button>
         </td>
       </tr>
     `).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">${err.message}</td></tr>`;
   }
 }
 
-function openEditClassModal(id, classs, section, year) {
+function openEditClassModal(id, classs, year) {
   document.getElementById('editClassId').value = id;
   document.getElementById('editClassName').value = classs;
-  document.getElementById('editClassSection').value = section;
   document.getElementById('editClassYear').value = year;
   openModal('modalEditClass');
 }
@@ -534,7 +532,6 @@ async function handleEditClass(event) {
   const id = form.id.value;
   const data = {
     classs: form.classs.value,
-    section: form.section.value || null,
     year: form.year.value
   };
 
@@ -948,7 +945,6 @@ async function handleCreateClass(event) {
   const form = event.target;
   const data = {
     classs: form.classs.value,
-    section: form.section.value || null,
     year: form.year.value
   };
 
