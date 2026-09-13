@@ -17,6 +17,8 @@ from .models import UserData
 from apps.academics.permissions import IsAdmin,IsTeacherOrAdmin
 from rest_framework.generics import ListAPIView
 from .pagination import CustomPagination
+from django.utils import timezone
+from django.contrib.auth.models import update_last_login
 from django.db.models import Count, Q
 from .resources import UserDataResource
 from apps.notifications.models import NotificationHistory
@@ -123,6 +125,19 @@ class LoginView(APIView):
             return Response({"detail": "User account is disabled."}, status=status.HTTP_403_FORBIDDEN)
 
         user_role = user.user_type 
+
+        # Update last login timestamp
+        update_last_login(None, user)
+
+        # Mark any pending notifications as DELIVERED upon user login
+        now = timezone.now()
+        NotificationHistory.objects.filter(
+            user=user,
+            delivery_status=NotificationHistory.STATUS_PENDING
+        ).update(
+            delivery_status=NotificationHistory.STATUS_DELIVERED,
+            delivered_at=now
+        )
 
         refresh = RefreshToken.for_user(user)
         # Bind user's institute and user_type to JWT custom claims

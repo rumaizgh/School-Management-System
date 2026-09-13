@@ -37,6 +37,15 @@ class DeviceTokenView(APIView):
             }
         )
 
+        # Mark any pending notifications as DELIVERED for this active user
+        NotificationHistory.objects.filter(
+            user=request.user,
+            delivery_status=NotificationHistory.STATUS_PENDING
+        ).update(
+            delivery_status=NotificationHistory.STATUS_DELIVERED,
+            delivered_at=timezone.now()
+        )
+
         return Response(
             {
                 "status": "success",
@@ -71,6 +80,15 @@ class NotificationHistoryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        now = timezone.now()
+        NotificationHistory.objects.filter(
+            user=request.user,
+            delivery_status=NotificationHistory.STATUS_PENDING
+        ).update(
+            delivery_status=NotificationHistory.STATUS_DELIVERED,
+            delivered_at=now
+        )
+
         notifications_qs = NotificationHistory.objects.filter(user=request.user)
         unread_count = notifications_qs.filter(is_read=False).count()
 
@@ -219,6 +237,21 @@ class BroadcastStatusView(APIView):
 
         # Grab meta from the first record (all share title/body/sent_at)
         first = records.first()
+
+        # Update pending records to delivered if recipient is logged in (has devices or last_login)
+        now = timezone.now()
+        logged_in_pending = records.filter(
+            delivery_status=NotificationHistory.STATUS_PENDING
+        ).filter(
+            models.Q(user__devices__isnull=False) | models.Q(user__last_login__isnull=False)
+        )
+        if logged_in_pending.exists():
+            logged_in_pending.update(
+                delivery_status=NotificationHistory.STATUS_DELIVERED,
+                delivered_at=now
+            )
+            # Refresh queryset
+            records = records.all()
 
         total = records.count()
         read_count = records.filter(delivery_status=NotificationHistory.STATUS_READ).count()

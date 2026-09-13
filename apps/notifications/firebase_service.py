@@ -80,21 +80,46 @@ def send_fcm_notification(
 
         target_users = UserData.objects.filter(id__in=user_ids, is_active=True)
         now = timezone.now()
-        history_objects = [
-            NotificationHistory(
-                user=user,
-                title=title,
-                body=body,
-                type=notification_type,
-                broadcast_id=broadcast_id,
-                data_payload=data_payload,
-                is_read=(user.id == sender_user_id),
-                delivery_status=NotificationHistory.STATUS_READ if user.id == sender_user_id else NotificationHistory.STATUS_PENDING,
-                delivered_at=now if user.id == sender_user_id else None,
-                read_at=now if user.id == sender_user_id else None,
+
+        # Identify logged-in users (have registered devices or last_login is set)
+        logged_in_user_ids = set(
+            UserData.objects.filter(id__in=user_ids, is_active=True)
+            .filter(models.Q(devices__isnull=False) | models.Q(last_login__isnull=False))
+            .values_list('id', flat=True)
+        )
+
+        history_objects = []
+        for user in target_users:
+            if user.id == sender_user_id:
+                notif_status = NotificationHistory.STATUS_READ
+                is_read = True
+                delivered_at = now
+                read_at = now
+            elif user.id in logged_in_user_ids:
+                notif_status = NotificationHistory.STATUS_DELIVERED
+                is_read = False
+                delivered_at = now
+                read_at = None
+            else:
+                notif_status = NotificationHistory.STATUS_PENDING
+                is_read = False
+                delivered_at = None
+                read_at = None
+
+            history_objects.append(
+                NotificationHistory(
+                    user=user,
+                    title=title,
+                    body=body,
+                    type=notification_type,
+                    broadcast_id=broadcast_id,
+                    data_payload=data_payload,
+                    is_read=is_read,
+                    delivery_status=notif_status,
+                    delivered_at=delivered_at,
+                    read_at=read_at,
+                )
             )
-            for user in target_users
-        ]
         if history_objects:
             saved_history_records = NotificationHistory.objects.bulk_create(history_objects)
 
