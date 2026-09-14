@@ -50,7 +50,6 @@ class UserData(AbstractUser):
     GENDER_CHOICES = [
         ('male', 'Male'),
         ('female', 'Female'),
-        ('other', 'Other')
     ]
     gender = models.CharField(max_length=20, choices=GENDER_CHOICES, null=True, blank=True)
     date_of_birth = models.DateField(blank=True, null=True)

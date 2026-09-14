@@ -37,6 +37,15 @@ class DeviceTokenView(APIView):
             }
         )
 
+        # Mark any pending notifications as DELIVERED for this active user
+        NotificationHistory.objects.filter(
+            user=request.user,
+            delivery_status=NotificationHistory.STATUS_PENDING
+        ).update(
+            delivery_status=NotificationHistory.STATUS_DELIVERED,
+            delivered_at=timezone.now()
+        )
+
         return Response(
             {
                 "status": "success",
@@ -71,6 +80,15 @@ class NotificationHistoryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        now = timezone.now()
+        NotificationHistory.objects.filter(
+            user=request.user,
+            delivery_status=NotificationHistory.STATUS_PENDING
+        ).update(
+            delivery_status=NotificationHistory.STATUS_DELIVERED,
+            delivered_at=now
+        )
+
         notifications_qs = NotificationHistory.objects.filter(user=request.user)
         unread_count = notifications_qs.filter(is_read=False).count()
 
@@ -192,30 +210,48 @@ class BroadcastStatusView(APIView):
             )
 
         records = NotificationHistory.objects.filter(
-            broadcast_id=broadcast_id
+            broadcast_id=broadcast_id,
+            user__is_active=True
         ).select_related('user')
 
         if not records.exists() and (isinstance(broadcast_id, int) or str(broadcast_id).isdigit()):
             # Fallback: support looking up by individual notification ID
-            single = NotificationHistory.objects.filter(id=int(broadcast_id)).first()
+            single = NotificationHistory.objects.filter(id=int(broadcast_id), user__is_active=True).first()
             if single:
                 if single.broadcast_id:
                     records = NotificationHistory.objects.filter(
-                        broadcast_id=single.broadcast_id
+                        broadcast_id=single.broadcast_id,
+                        user__is_active=True
                     ).select_related('user')
                 else:
                     records = NotificationHistory.objects.filter(
-                        id=single.id
+                        id=single.id,
+                        user__is_active=True
                     ).select_related('user')
 
         if not records.exists():
             return Response(
-                {"status": "error", "message": "Broadcast ID not found."},
+                {"status": "error", "message": "Broadcast ID not found or no active recipients."},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         # Grab meta from the first record (all share title/body/sent_at)
         first = records.first()
+
+        # Update pending records to delivered if recipient is logged in (has devices or last_login)
+        now = timezone.now()
+        logged_in_pending = records.filter(
+            delivery_status=NotificationHistory.STATUS_PENDING
+        ).filter(
+            models.Q(user__devices__isnull=False) | models.Q(user__last_login__isnull=False)
+        )
+        if logged_in_pending.exists():
+            logged_in_pending.update(
+                delivery_status=NotificationHistory.STATUS_DELIVERED,
+                delivered_at=now
+            )
+            # Refresh queryset
+            records = records.all()
 
         total = records.count()
         read_count = records.filter(delivery_status=NotificationHistory.STATUS_READ).count()
@@ -358,8 +394,8 @@ class SendBroadcastView(APIView):
         target_ids = serializer.validated_data['target_ids']
         data_payload = serializer.validated_data.get('data_payload', {})
 
-        # Resolve target users
-        target_users_qs = UserData.objects.all()
+        # Resolve target users (only active users)
+        target_users_qs = UserData.objects.filter(is_active=True)
 
         # If admin belongs to an institute, filter users by institute
         if hasattr(request.user, 'institute') and request.user.institute:
@@ -377,6 +413,10 @@ class SendBroadcastView(APIView):
 
         target_user_ids = list(target_users_qs.values_list('id', flat=True))
 
+        # Always include sending admin so they have a history record marked as READ
+        if request.user.id and request.user.id not in target_user_ids:
+            target_user_ids.append(request.user.id)
+
         screen = data_payload.get('screen')
         extra_data = {k: v for k, v in data_payload.items() if k != 'screen'}
 
@@ -387,7 +427,8 @@ class SendBroadcastView(APIView):
             notification_type=notif_type,
             screen=screen,
             extra_data=extra_data,
-            save_to_history=True
+            save_to_history=True,
+            sender_user_id=request.user.id
         )
 
         return Response(

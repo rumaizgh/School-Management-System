@@ -2,6 +2,8 @@ import os
 import uuid
 import logging
 from django.conf import settings
+from django.db import models
+from django.utils import timezone
 try:
     import firebase_admin
     from firebase_admin import credentials, messaging
@@ -48,11 +50,15 @@ def send_fcm_notification(
     notification_type='general_announcement',
     screen=None,
     extra_data=None,
-    save_to_history=True
+    save_to_history=True,
+    sender_user_id=None
 ):
     """
     Sends FCM Push Notifications to devices associated with user_ids
     and optionally logs the notification in NotificationHistory.
+    If sender_user_id is provided:
+      - The sender is excluded from receiving the FCM push notification popup.
+      - The sender's NotificationHistory record is automatically created as READ.
     """
     from .models import UserDevice, NotificationHistory
     from apps.account.models import UserData
@@ -73,23 +79,55 @@ def send_fcm_notification(
             for k, v in extra_data.items():
                 data_payload[str(k)] = str(v)
 
-        target_users = UserData.objects.filter(id__in=user_ids)
-        history_objects = [
-            NotificationHistory(
-                user=user,
-                title=title,
-                body=body,
-                type=notification_type,
-                broadcast_id=broadcast_id,
-                data_payload=data_payload
+        target_users = UserData.objects.filter(id__in=user_ids, is_active=True)
+        now = timezone.now()
+
+        # Identify logged-in users (have registered devices or last_login is set)
+        logged_in_user_ids = set(
+            UserData.objects.filter(id__in=user_ids, is_active=True)
+            .filter(models.Q(devices__isnull=False) | models.Q(last_login__isnull=False))
+            .values_list('id', flat=True)
+        )
+
+        history_objects = []
+        for user in target_users:
+            if user.id == sender_user_id:
+                notif_status = NotificationHistory.STATUS_READ
+                is_read = True
+                delivered_at = now
+                read_at = now
+            elif user.id in logged_in_user_ids:
+                notif_status = NotificationHistory.STATUS_DELIVERED
+                is_read = False
+                delivered_at = now
+                read_at = None
+            else:
+                notif_status = NotificationHistory.STATUS_PENDING
+                is_read = False
+                delivered_at = None
+                read_at = None
+
+            history_objects.append(
+                NotificationHistory(
+                    user=user,
+                    title=title,
+                    body=body,
+                    type=notification_type,
+                    broadcast_id=broadcast_id,
+                    data_payload=data_payload,
+                    is_read=is_read,
+                    delivery_status=notif_status,
+                    delivered_at=delivered_at,
+                    read_at=read_at,
+                )
             )
-            for user in target_users
-        ]
         if history_objects:
             saved_history_records = NotificationHistory.objects.bulk_create(history_objects)
 
-    # 2. Fetch device tokens
-    devices = UserDevice.objects.filter(user_id__in=user_ids)
+    # 2. Fetch device tokens (active users only, exclude the sender)
+    devices = UserDevice.objects.filter(user_id__in=user_ids, user__is_active=True)
+    if sender_user_id:
+        devices = devices.exclude(user_id=sender_user_id)
     if not devices.exists():
         logger.info(f"No active device tokens found for user_ids: {user_ids}")
         return {

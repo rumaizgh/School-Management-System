@@ -51,7 +51,6 @@ class Grade(models.Model):
 class Batch(models.Model):
     institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='batches', null=True, blank=True)
     classs = models.CharField(max_length=10)
-    section = models.CharField(max_length=10, null=True, blank=True)
 
     YEAR_CHOICES = [
         (f"{y}-{str(y+1)[-2:]}", f"{y}-{str(y+1)[-2:]}")
@@ -67,7 +66,7 @@ class Batch(models.Model):
         unique_together = ['institute', 'classs', 'year']
 
     def __str__(self):
-        return f"{self.classs}{f' {self.section}' if self.section else ''}{f' ({self.year})' if self.year else ''}"
+        return f"{self.classs}{f' ({self.year})' if self.year else ''}"
  
 class Fee(models.Model):
     institute = models.ForeignKey(Institute, on_delete=models.CASCADE, related_name='fees', null=True, blank=True)
