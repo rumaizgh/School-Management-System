@@ -2,6 +2,7 @@ import os
 import uuid
 import logging
 from django.conf import settings
+from django.db import models
 from django.utils import timezone
 try:
     import firebase_admin
