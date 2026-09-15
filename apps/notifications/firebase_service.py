@@ -126,8 +126,8 @@ def send_fcm_notification(
 
     # 2. Fetch device tokens (active users only, exclude the sender from push popup)
     devices = UserDevice.objects.filter(user_id__in=user_ids, user__is_active=True)
-    # if sender_user_id:
-    #     devices = devices.exclude(user_id=sender_user_id)
+    if sender_user_id:
+        devices = devices.exclude(user_id=sender_user_id)
     if not devices.exists():
         logger.info(f"No active device tokens found for user_ids (excluding sender): {user_ids}")
         return {
