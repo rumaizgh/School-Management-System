@@ -139,15 +139,22 @@ def send_fcm_notification(
 
     tokens_list = list(devices.values_list('device_token', flat=True))
 
-    # Construct FCM data map (FCM data payload values MUST be string)
-    fcm_data = {"click_action": "FLUTTER_NOTIFICATION_CLICK"}
+    # Construct FCM data map (FCM data payload values MUST be strings)
+    # Including title, body, and type directly in data helps Flutter foreground/background listeners
+    fcm_data = {
+        "click_action": "FLUTTER_NOTIFICATION_CLICK",
+        "title": str(title),
+        "body": str(body),
+        "notification_type": str(notification_type),
+        "broadcast_id": str(broadcast_id),
+    }
     if screen:
         fcm_data["screen"] = str(screen)
     if extra_data:
         for k, v in extra_data.items():
             fcm_data[str(k)] = str(v)
 
-    # Construct Multicast Message
+    # Construct Multicast Message with high priority, sound, and channel configuration
     message = messaging.MulticastMessage(
         tokens=tokens_list,
         notification=messaging.Notification(
@@ -156,19 +163,37 @@ def send_fcm_notification(
         ),
         data=fcm_data,
         android=messaging.AndroidConfig(
+            priority="high",
             notification=messaging.AndroidNotification(
-                channel_id="school_high_importance_channel"
+                channel_id="school_high_importance_channel",
+                priority="high",
+                sound="default",
+                default_sound=True,
+                default_vibrate_timings=True,
+                default_light_settings=True,
+                visibility="public",
+                click_action="FLUTTER_NOTIFICATION_CLICK",
             )
         ),
         apns=messaging.APNSConfig(
+            headers={
+                "apns-priority": "10",
+                "apns-push-type": "alert",
+            },
             payload=messaging.APNSPayload(
                 aps=messaging.Aps(
+                    alert=messaging.ApsAlert(
+                        title=title,
+                        body=body,
+                    ),
                     sound="default",
-                    badge=1
+                    badge=1,
+                    content_available=True,
                 )
             )
         )
     )
+
 
     success_count = 0
     failure_count = 0
@@ -178,30 +203,39 @@ def send_fcm_notification(
         success_count = response.success_count
         failure_count = response.failure_count
 
-        # Clean up invalid/unregistered tokens (FCM HTTP v1 error codes)
+        logger.info(
+            f"[FCM] Dispatched broadcast {broadcast_id}: {success_count} succeeded, "
+            f"{failure_count} failed out of {len(tokens_list)} token(s)."
+        )
+
+        # Log details & clean up unregistered tokens
         if failure_count > 0:
             failed_tokens = []
-            invalid_err_codes = {
+            unregistered_codes = {
                 "UNREGISTERED",
-                "INVALID_ARGUMENT",
+                "NOT_FOUND",
                 "messaging/registration-token-not-registered",
-                "messaging/invalid-registration-token",
                 "NotRegistered",
-                "InvalidRegistration",
             }
             for idx, resp in enumerate(response.responses):
                 if not resp.success:
-                    err_code = resp.exception.code if resp.exception else ""
-                    err_str = str(resp.exception).lower()
-                    if err_code in invalid_err_codes or "not registered" in err_str or "invalid registration" in err_str:
+                    err = resp.exception
+                    err_code = getattr(err, 'code', '') or ''
+                    err_str = str(err)
+                    token_preview = f"{tokens_list[idx][:15]}...{tokens_list[idx][-10:]}"
+                    logger.warning(
+                        f"[FCM] Token failure [{token_preview}]: code={err_code}, error={err_str}"
+                    )
+                    # Clean up ONLY if definitively unregistered/not found
+                    if err_code in unregistered_codes or "notregistered" in err_str.lower() or "not registered" in err_str.lower():
                         failed_tokens.append(tokens_list[idx])
 
             if failed_tokens:
                 deleted_count = UserDevice.objects.filter(device_token__in=failed_tokens).delete()[0]
-                logger.info(f"Cleaned up {deleted_count} invalid FCM tokens from database.")
+                logger.info(f"[FCM] Cleaned up {deleted_count} unregistered FCM tokens from database.")
 
     except Exception as e:
-        logger.error(f"Error dispatching FCM message: {e}")
+        logger.error(f"[FCM] Error dispatching FCM message: {e}", exc_info=True)
 
     return {
         "broadcast_id": broadcast_id,
@@ -209,3 +243,4 @@ def send_fcm_notification(
         "failure_count": failure_count,
         "history_created": len(saved_history_records)
     }
+

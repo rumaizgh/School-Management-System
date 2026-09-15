@@ -3,8 +3,24 @@ from .models import UserDevice, NotificationHistory
 
 
 class DeviceTokenSerializer(serializers.Serializer):
-    device_token = serializers.CharField(max_length=500, required=True)
-    device_type = serializers.ChoiceField(choices=['android', 'ios'], default='android')
+    device_token = serializers.CharField(max_length=500, required=False)
+    fcm_token = serializers.CharField(max_length=500, required=False)
+    fcmToken = serializers.CharField(max_length=500, required=False)
+    token = serializers.CharField(max_length=500, required=False)
+    device_type = serializers.ChoiceField(choices=['android', 'ios'], default='android', required=False)
+
+    def validate(self, attrs):
+        token = (
+            attrs.get('device_token')
+            or attrs.get('fcm_token')
+            or attrs.get('fcmToken')
+            or attrs.get('token')
+        )
+        if not token:
+            raise serializers.ValidationError({"device_token": "device_token or fcm_token is required."})
+        attrs['device_token'] = token
+        attrs.setdefault('device_type', 'android')
+        return attrs
 
 
 class NotificationHistorySerializer(serializers.ModelSerializer):
