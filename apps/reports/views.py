@@ -1,7 +1,7 @@
 from datetime import date
 from calendar import month_abbr
 
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Q, Sum
 from django.utils import timezone
 
 from rest_framework.permissions import IsAuthenticated
@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 
 from apps.account.models import UserData
-from apps.academics.models import Batch, Exam, Grade
+from apps.academics.models import Batch, Exam, Grade, Fee, Payment
 from apps.attendance.models import AttendanceSession, AttendanceRecord
 from apps.subject.models import Subject, Chapter
 from apps.academics.models import Mark
@@ -105,6 +105,9 @@ class AdminOverviewReportView(APIView):
         total_students = base_users.filter(user_type='student', is_active=True).count()
         total_teachers = base_users.filter(user_type='teacher', is_active=True).count()
 
+        fee_qs = Fee.objects.all()
+        payment_qs = Payment.objects.all()
+
         batch_qs = Batch.objects.all()
         subject_qs = Subject.objects.all()
         exam_qs = Exam.objects.filter(is_deleted=False)
@@ -123,10 +126,17 @@ class AdminOverviewReportView(APIView):
             mark_qs = mark_qs.filter(
                 Q(exam__institute=institute) | Q(exam__institute__isnull=True)
             )
+            fee_qs = fee_qs.filter(institute=institute)
+            payment_qs = payment_qs.filter(fee__institute=institute)
 
         total_classes = batch_qs.count()
         total_subjects = subject_qs.count()
         exams_conducted = exam_qs.count()
+
+        total_fee = fee_qs.aggregate(total=Sum('amount'))['total'] or 0
+        total_paid = payment_qs.aggregate(total=Sum('amount'))['total'] or 0
+        total_balance = float(total_fee) - float(total_paid)
+        percentage_paid = round((float(total_paid) / float(total_fee)) * 100, 2) if total_fee else 0
 
         # ── Overall attendance rate (all-time) ───────────────────────────────
         total_records = record_qs.count()
@@ -169,11 +179,22 @@ class AdminOverviewReportView(APIView):
             b_marks = mark_qs.filter(student_id__in=batch_student_ids)
             p_rate = _pass_rate(b_marks)
 
+            batch_fee_total = float(fee_qs.filter(batch=batch).aggregate(total=Sum('amount'))['total'] or 0)
+            batch_paid_total = float(payment_qs.filter(fee__batch=batch).aggregate(total=Sum('amount'))['total'] or 0)
+            batch_balance = batch_fee_total - batch_paid_total
+            batch_percentage_paid = round((batch_paid_total / batch_fee_total) * 100, 2) if batch_fee_total else 0
+
             class_wise.append({
+                "id": batch.id,
                 "class_name": str(batch),
+                "section": "",
                 "student_count": student_count,
                 "attendance_rate": att_rate,
                 "pass_rate": p_rate,
+                "total_fee": batch_fee_total,
+                "total_paid": batch_paid_total,
+                "balance": batch_balance,
+                "percentage_paid": batch_percentage_paid,
             })
 
         # ── Subject-wise pass rate ───────────────────────────────────────────
@@ -212,6 +233,10 @@ class AdminOverviewReportView(APIView):
             "absent_today": absent_today,
             "exams_conducted": exams_conducted,
             "overall_pass_rate": overall_pass_rate,
+            "total_fee": float(total_fee),
+            "total_paid": float(total_paid),
+            "total_balance": float(total_balance),
+            "percentage_paid": percentage_paid,
             "class_wise": class_wise,
             "subject_wise_pass_rate": subject_wise_pass_rate,
             "monthly_attendance": monthly_attendance,
