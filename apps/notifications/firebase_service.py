@@ -124,18 +124,20 @@ def send_fcm_notification(
         if history_objects:
             saved_history_records = NotificationHistory.objects.bulk_create(history_objects)
 
-    # 2. Fetch device tokens (active users only, exclude the sender)
+    # 2. Fetch device tokens (active users only, exclude the sender from push popup)
     devices = UserDevice.objects.filter(user_id__in=user_ids, user__is_active=True)
     if sender_user_id:
         devices = devices.exclude(user_id=sender_user_id)
     if not devices.exists():
-        logger.info(f"No active device tokens found for user_ids: {user_ids}")
+        logger.info(f"No active device tokens found for user_ids (excluding sender): {user_ids}")
         return {
             "broadcast_id": broadcast_id,
             "success_count": 0,
             "failure_count": 0,
             "history_created": len(saved_history_records)
         }
+
+
 
     tokens_list = list(devices.values_list('device_token', flat=True))
 

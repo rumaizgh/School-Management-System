@@ -410,6 +410,14 @@ class SendBroadcastView(APIView):
         elif target_type == 'user':
             if target_ids:
                 target_users_qs = target_users_qs.filter(id__in=target_ids).distinct()
+        elif target_type in ['student', 'students']:
+            target_users_qs = target_users_qs.filter(user_type='student')
+        elif target_type in ['teacher', 'teachers']:
+            target_users_qs = target_users_qs.filter(user_type='teacher')
+        elif target_type == 'role':
+            if target_ids:
+                target_users_qs = target_users_qs.filter(user_type__in=target_ids)
+
 
         target_user_ids = list(target_users_qs.values_list('id', flat=True))
 

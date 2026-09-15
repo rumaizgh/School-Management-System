@@ -46,7 +46,10 @@ class SendBroadcastSerializer(serializers.Serializer):
     body = serializers.CharField(required=True)
     type = serializers.CharField(required=False, default='general_announcement')
     target_type = serializers.ChoiceField(
-        choices=['all', 'class', 'section', 'user'],
+        choices=[
+            'all', 'class', 'section', 'user', 'role',
+            'student', 'students', 'teacher', 'teachers'
+        ],
         default='all'
     )
     target_ids = serializers.ListField(
@@ -55,4 +58,5 @@ class SendBroadcastSerializer(serializers.Serializer):
         default=list
     )
     data_payload = serializers.DictField(required=False, default=dict)
+
 
