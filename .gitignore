@@ -13,7 +13,7 @@ staticfiles/
 venv/
 .env
 env/
-
+.venv/
 # IDE settings
 .vscode/
 .idea/
