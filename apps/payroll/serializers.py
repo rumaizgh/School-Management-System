@@ -63,6 +63,7 @@ class SalaryDetailSerializer(serializers.ModelSerializer):
     All computed fields are read-only and calculated at serialization time.
     """
     teacher_name = serializers.CharField(source='teacher.name', read_only=True)
+    profile = serializers.SerializerMethodField()
     gross_salary = serializers.SerializerMethodField()
     pf_deduction = serializers.SerializerMethodField()
     tax_deduction = serializers.SerializerMethodField()
@@ -77,6 +78,7 @@ class SalaryDetailSerializer(serializers.ModelSerializer):
             'id',
             'teacher_id',
             'teacher_name',
+            'profile',
             'month',
             'status',
             'pay_type',
@@ -95,6 +97,14 @@ class SalaryDetailSerializer(serializers.ModelSerializer):
             'balance',
             'payment_status',
         ]
+
+    def get_profile(self, obj):
+        if obj.teacher and obj.teacher.profile:
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri(obj.teacher.profile.url)
+            return obj.teacher.profile.url
+        return None
 
     def get_gross_salary(self, obj):
         return obj.gross_salary
@@ -136,6 +146,7 @@ class SalaryPaymentSerializer(serializers.ModelSerializer):
         source='teacher'
     )
     teacher_name = serializers.CharField(source='teacher.name', read_only=True)
+    profile = serializers.SerializerMethodField()
     month = serializers.CharField(source='salary.month', read_only=True)
 
     class Meta:
@@ -145,6 +156,7 @@ class SalaryPaymentSerializer(serializers.ModelSerializer):
             'salary_id',
             'teacher_id',
             'teacher_name',
+            'profile',
             'month',
             'amount',
             'payment_method',
@@ -157,6 +169,14 @@ class SalaryPaymentSerializer(serializers.ModelSerializer):
             'remarks': {'required': False, 'allow_null': True, 'allow_blank': True},
             'paid_on': {'required': False},
         }
+
+    def get_profile(self, obj):
+        if obj.teacher and obj.teacher.profile:
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri(obj.teacher.profile.url)
+            return obj.teacher.profile.url
+        return None
 
     def validate(self, data):
         salary = data.get('salary')

@@ -41,10 +41,19 @@ class AttendanceRecordStudentSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='student.name', read_only=True)
     roll_no = serializers.CharField(source='student.roll_no', read_only=True)
     session = serializers.CharField(source='session.teacher', read_only=True)
+    profile = serializers.SerializerMethodField()
 
     class Meta:
         model = AttendanceRecord
-        fields = ['id', 'name', 'roll_no', 'status', 'session']
+        fields = ['id', 'name', 'roll_no', 'status', 'session', 'profile']
+
+    def get_profile(self, obj):
+        if obj.student and obj.student.profile:
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri(obj.student.profile.url)
+            return obj.student.profile.url
+        return None
 
 class ViewAttendanceRecordStudentSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='student.name', read_only=True)
@@ -54,10 +63,19 @@ class ViewAttendanceRecordStudentSerializer(serializers.ModelSerializer):
     subject = serializers.SerializerMethodField()
     time = serializers.CharField(source='session.time', read_only = True)
     end_time = serializers.CharField(source='session.end_time', read_only=True)
+    profile = serializers.SerializerMethodField()
 
     class Meta:
         model = AttendanceRecord
-        fields = ['teacher', 'subject', 'date', 'time', 'end_time', 'id', 'name', 'roll_no', 'status']
+        fields = ['teacher', 'subject', 'date', 'time', 'end_time', 'id', 'name', 'roll_no', 'status', 'profile']
+
+    def get_profile(self, obj):
+        if obj.student and obj.student.profile:
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri(obj.student.profile.url)
+            return obj.student.profile.url
+        return None
 
     def get_subject(self, obj):
         session = obj.session

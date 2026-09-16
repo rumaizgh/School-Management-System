@@ -80,7 +80,7 @@ class SalaryConfigView(APIView):
             )
 
         salary = get_object_or_404(TeacherSalary, teacher=teacher, month=month)
-        serializer = SalaryDetailSerializer(salary)
+        serializer = SalaryDetailSerializer(salary, context={'request': request})
 
         return Response({"success": True, "data": serializer.data})
 
@@ -93,7 +93,7 @@ class DisbursePaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = SalaryPaymentSerializer(data=request.data)
+        serializer = SalaryPaymentSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -157,7 +157,7 @@ class PayrollHistoryView(APIView):
         if search:
             qs = qs.filter(teacher__name__icontains=search)
 
-        serializer = SalaryPaymentSerializer(qs, many=True)
+        serializer = SalaryPaymentSerializer(qs, many=True, context={'request': request})
         return Response({
             "success": True,
             "count": qs.count(),
@@ -178,7 +178,7 @@ class TeacherPaymentHistoryView(APIView):
         )
 
         payments = SalaryPayment.objects.filter(teacher=teacher).select_related('salary').order_by('-paid_on')
-        serializer = SalaryPaymentSerializer(payments, many=True)
+        serializer = SalaryPaymentSerializer(payments, many=True, context={'request': request})
 
         return Response({
             "success": True,

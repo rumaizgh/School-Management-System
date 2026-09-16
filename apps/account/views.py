@@ -144,7 +144,7 @@ class LoginView(APIView):
         refresh['institute_id'] = user.institute.id if user.institute else None
         refresh['user_type'] = user.user_type
         
-        user_data = UserDataSerializer(user).data
+        user_data = UserDataSerializer(user, context={'request': request}).data
 
         return Response({
             'user': user_data,

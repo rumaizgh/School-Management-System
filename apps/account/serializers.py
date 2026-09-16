@@ -32,11 +32,20 @@ class UserDataSerializer(serializers.ModelSerializer):
         required=False
     )
     institute_details = InstituteMinimalSerializer(source='institute', read_only=True)
+    profile = serializers.SerializerMethodField()
 
     class Meta:
         model = UserData
         fields = "__all__"
         extra_kwargs = {'password': {'write_only': True}}
+
+    def get_profile(self, obj):
+        if obj.profile:
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri(obj.profile.url)
+            return obj.profile.url
+        return None
 
     def create(self, validated_data):
         subjects = validated_data.pop('subject', None)

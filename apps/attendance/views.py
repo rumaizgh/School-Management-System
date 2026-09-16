@@ -108,7 +108,7 @@ class ViewAttendanceSessions(APIView):
         paginator = CustomPagination()
         paginated_records = paginator.paginate_queryset(records, request)
 
-        serializer = AttendanceSessionSerializer(paginated_records, many=True)
+        serializer = AttendanceSessionSerializer(paginated_records, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
 
     def delete(self, request, id):
@@ -142,7 +142,7 @@ class GetSessionsByClass(APIView):
         paginator = CustomPagination()
         paginated_records = paginator.paginate_queryset(records, request)
 
-        serializer = AttendanceSessionSerializer(paginated_records, many=True)
+        serializer = AttendanceSessionSerializer(paginated_records, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
     
 class AttendanceStudentsList(APIView):
@@ -151,7 +151,7 @@ class AttendanceStudentsList(APIView):
         classs = session.classs
         students = UserData.objects.filter(classs=classs, user_type="student", is_active = True)
         students = InstituteFilterBackend().filter_queryset(request, students, None)
-        serializer = UserDataSerializer(students, many=True)
+        serializer = UserDataSerializer(students, many=True, context={'request': request})
         return Response(serializer.data)
 
     def post(self, request):
@@ -213,7 +213,7 @@ class AttendanceRecordView(APIView):
             'session__classs'
         )
 
-        serializer = self.get_serializer_class()(records, many=True)
+        serializer = self.get_serializer_class()(records, many=True, context={'request': request})
         return Response(serializer.data)
 
     def patch(self, request, id):
@@ -249,7 +249,7 @@ class StudentAttendanceView(APIView):
         if status:
             records = records.filter(status=status)
 
-        serializer = ViewAttendanceRecordStudentSerializer(records, many=True)
+        serializer = ViewAttendanceRecordStudentSerializer(records, many=True, context={'request': request})
         unread_count = NotificationHistory.objects.filter(user=request.user, is_read=False).count()
         return Response({
             "unread_count": unread_count,
@@ -263,7 +263,7 @@ class TeacherStudentAttendanceView(APIView):
         records = AttendanceRecord.objects.filter(student=student,session__teacher=request.user,session__classs=classs_id)
         records = InstituteFilterBackend().filter_queryset(request, records, None)
         records = records.select_related('student', 'session', 'session__teacher', 'session__subject', 'session__classs')
-        serializer = AttendanceRecordStudentSerializer(records, many=True)
+        serializer = AttendanceRecordStudentSerializer(records, many=True, context={'request': request})
         return Response(serializer.data)
 
 class SearchSession(APIView):
@@ -286,5 +286,5 @@ class SearchSession(APIView):
         if not sessions.exists():
             return Response({"message": "No sessions found"}, status=404)
 
-        serializer = AttendanceSessionSerializer(sessions, many=True)
+        serializer = AttendanceSessionSerializer(sessions, many=True, context={'request': request})
         return Response(serializer.data)

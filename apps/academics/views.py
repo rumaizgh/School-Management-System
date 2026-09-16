@@ -109,7 +109,7 @@ class ViewStudentsByClass(APIView):
         students = UserData.objects.filter(classs=classs, user_type="student", is_active=True)
         students = InstituteFilterBackend().filter_queryset(request, students, None)
         students = apply_user_filters_and_ordering(students, request)
-        serializer = UserDataSerializer(students, many=True)
+        serializer = UserDataSerializer(students, many=True, context={'request': request})
         return Response(serializer.data)
 
 class ViewTeachersByClass(APIView):
@@ -118,7 +118,7 @@ class ViewTeachersByClass(APIView):
         teachers = UserData.objects.filter(classs=classs, user_type="teacher", is_active=True)
         teachers = InstituteFilterBackend().filter_queryset(request, teachers, None)
         teachers = apply_user_filters_and_ordering(teachers, request)
-        serializer = UserDataSerializer(teachers, many=True)
+        serializer = UserDataSerializer(teachers, many=True, context={'request': request})
         return Response(serializer.data)
      
 class TimeTablesView(APIView):
@@ -199,11 +199,11 @@ class PaymentListCreateAPIView(APIView):
             payments = payments.filter(fee__student_id=student)
 
         payments = InstituteFilterBackend().filter_queryset(request, payments, None)
-        serializer = PaymentSerializer(payments, many=True)
+        serializer = PaymentSerializer(payments, many=True, context={'request': request})
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = PaymentSerializer(data=request.data)
+        serializer = PaymentSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             # Secure validation: verify fee belongs to the requesting user's institute
             fee = get_institute_scoped_object_or_404(Fee, request, id=serializer.validated_data['fee'].id)
@@ -338,11 +338,11 @@ class CreatePayment(APIView):
         paginator = CustomPagination()
         paginated_payments = paginator.paginate_queryset(payments, request)
 
-        serializer = PaymentSerializer(paginated_payments, many=True)
+        serializer = PaymentSerializer(paginated_payments, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
     
     def post(self, request):
-        serializer = PaymentSerializer(data=request.data)
+        serializer = PaymentSerializer(data=request.data, context={'request': request})
 
         if serializer.is_valid():
             # Secure validation: verify fee belongs to the requesting user's institute
@@ -515,14 +515,14 @@ class SearchPaymentHistory(APIView):
                 fee__student__name__icontains=q
             ).order_by('-id')
             payments = InstituteFilterBackend().filter_queryset(request, payments, None)
-            serializer = PaymentSerializer(payments, many=True)
+            serializer = PaymentSerializer(payments, many=True, context={'request': request})
             return Response(serializer.data, status=200)
 
         if id is None:
             return Response({"detail": "Payment id is required unless q is provided."}, status=400)
 
         payment = get_institute_scoped_object_or_404(Payment, request, id=id)
-        serializer = PaymentSerializer(payment)
+        serializer = PaymentSerializer(payment, context={'request': request})
         return Response(serializer.data, status=200)
 
 

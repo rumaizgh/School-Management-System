@@ -179,11 +179,22 @@ class PaymentSerializer(serializers.ModelSerializer):
         return float(obj.fee.amount or 0) - total_paid
     
     def get_student(self, obj):
+        student = obj.fee.student if obj.fee else None
+        if not student:
+            return None
+        profile_url = None
+        if student.profile:
+            request = self.context.get('request')
+            if request is not None:
+                profile_url = request.build_absolute_uri(student.profile.url)
+            else:
+                profile_url = student.profile.url
         return {
-            "id": obj.fee.student.id,
-            "name": obj.fee.student.name,
-            "phone": obj.fee.student.phone,
-            "parent_contact": obj.fee.student.parent_contact
+            "id": student.id,
+            "name": student.name,
+            "phone": student.phone,
+            "parent_contact": student.parent_contact,
+            "profile": profile_url
         }
 
 
