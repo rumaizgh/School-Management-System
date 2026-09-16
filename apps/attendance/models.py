@@ -19,6 +19,7 @@ class AttendanceSession(models.Model):
     date = models.DateField(default=timezone.localdate)
     time = models.TimeField()
     end_time = models.TimeField(null=True, blank=True)
+    is_exam = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if not self.institute:
@@ -26,6 +27,8 @@ class AttendanceSession(models.Model):
                 self.institute = self.teacher.institute
             elif self.classs and self.classs.institute:
                 self.institute = self.classs.institute
+        if self.timetable and hasattr(self.timetable, 'is_exam'):
+            self.is_exam = self.timetable.is_exam
         super().save(*args, **kwargs)
 
     def __str__(self):

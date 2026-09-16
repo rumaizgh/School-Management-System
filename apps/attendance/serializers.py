@@ -11,7 +11,7 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttendanceSession
         fields = ['id', 'timetable', 'teacher', 'teacher_name', 'date', 'time', 'end_time',
-                  'subject', 'subject_name', 'classs', 'classs_name']
+                  'subject', 'subject_name', 'classs', 'classs_name', 'is_exam']
         extra_kwargs = {
             'teacher': {'required': False},
             'subject': {'required': False},
@@ -19,6 +19,7 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
             'date': {'required': False},
             'time': {'required': False},
             'end_time': {'required': False},
+            'is_exam': {'required': False},
         }
 
     def create(self, validated_data):
@@ -30,6 +31,8 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
             validated_data['date'] = timetable.date
             validated_data['time'] = timetable.start_time
             validated_data['end_time'] = timetable.end_time
+            if 'is_exam' not in validated_data and hasattr(timetable, 'is_exam'):
+                validated_data['is_exam'] = timetable.is_exam
         return super().create(validated_data)
      
 class AttendanceRecordSerializer(serializers.ModelSerializer):

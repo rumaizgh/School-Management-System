@@ -105,6 +105,13 @@ class ViewAttendanceSessions(APIView):
 
         records = InstituteFilterBackend().filter_queryset(request, records, None)
 
+        is_exam = request.query_params.get('is_exam')
+        if is_exam is not None:
+            if is_exam.lower() in ['true', '1']:
+                records = records.filter(is_exam=True)
+            elif is_exam.lower() in ['false', '0']:
+                records = records.filter(is_exam=False)
+
         paginator = CustomPagination()
         paginated_records = paginator.paginate_queryset(records, request)
 
@@ -138,6 +145,13 @@ class GetSessionsByClass(APIView):
             classs_id=classs_id
         ).order_by("-date")
         records = InstituteFilterBackend().filter_queryset(request, records, None)
+
+        is_exam = request.query_params.get('is_exam')
+        if is_exam is not None:
+            if is_exam.lower() in ['true', '1']:
+                records = records.filter(is_exam=True)
+            elif is_exam.lower() in ['false', '0']:
+                records = records.filter(is_exam=False)
 
         paginator = CustomPagination()
         paginated_records = paginator.paginate_queryset(records, request)
