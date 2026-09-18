@@ -48,7 +48,7 @@ class AttendanceRecordStudentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AttendanceRecord
-        fields = ['id', 'name', 'roll_no', 'status', 'session', 'profile']
+        fields = ['id', 'name', 'roll_no', 'status', 'session', 'profile', 'leave_reason']
 
     def get_profile(self, obj):
         if obj.student and obj.student.profile:
@@ -70,7 +70,7 @@ class ViewAttendanceRecordStudentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AttendanceRecord
-        fields = ['teacher', 'subject', 'date', 'time', 'end_time', 'id', 'name', 'roll_no', 'status', 'profile']
+        fields = ['teacher', 'subject', 'date', 'time', 'end_time', 'id', 'name', 'roll_no', 'status', 'profile', 'leave_reason']
 
     def get_profile(self, obj):
         if obj.student and obj.student.profile:

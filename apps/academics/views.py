@@ -241,9 +241,9 @@ def apply_fee_filters_and_ordering(fees, request):
         if status_lower == 'paid':
             fees = fees.filter(total_paid_sum__gte=F('amount'))
         elif status_lower == 'overdue':
-            fees = fees.filter(total_paid_sum__lt=F('amount'), due_date__lt=today)
+            fees = fees.filter(total_paid_sum__lt=F('amount'), due_date__isnull=False, due_date__lt=today)
         elif status_lower == 'pending':
-            fees = fees.filter(total_paid_sum__lt=F('amount'), due_date__gte=today)
+            fees = fees.filter(total_paid_sum__lt=F('amount')).filter(Q(due_date__gte=today) | Q(due_date__isnull=True))
 
     ordering = request.GET.get('ordering')
     if ordering:

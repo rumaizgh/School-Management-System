@@ -992,7 +992,7 @@ async function handleCreateFee(event) {
     batch: parseInt(form.batch_id.value),
     amount: parseFloat(form.amount.value),
     description: form.description.value || 'Tuition Fee',
-    due_date: form.due_date.value
+    due_date: form.due_date.value || null
   };
 
   try {
@@ -1275,7 +1275,7 @@ async function handleEditFee(event) {
   const data = {
     description: form.description.value || 'Tuition Fee',
     amount: parseFloat(form.amount.value),
-    due_date: form.due_date.value
+    due_date: form.due_date.value || null
   };
 
   try {

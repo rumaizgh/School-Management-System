@@ -51,10 +51,9 @@ def send_fee_assigned_notification(fee):
 
         amount_str = f"{fee.amount:g}" if isinstance(fee.amount, (int, float)) else str(fee.amount)
         batch_name = fee.batch.classs if fee.batch else "Class"
-        due_date_str = fee.due_date.strftime('%Y-%m-%d') if fee.due_date else ""
 
         title = "New Fee Assigned 💳"
-        body = f"A fee of ₹{amount_str} for Class {batch_name} is due on {due_date_str}."
+        body = f"A fee of ₹{amount_str} for Class {batch_name} has been assigned."
 
         extra_data = {
             "fee_id": str(fee.id),
@@ -86,10 +85,13 @@ def send_fee_updated_notification(fee):
 
         amount_str = f"{fee.amount:g}" if isinstance(fee.amount, (int, float)) else str(fee.amount)
         batch_name = fee.batch.classs if fee.batch else "Class"
-        due_date_str = fee.due_date.strftime('%Y-%m-%d') if fee.due_date else ""
 
         title = "Fee Details Updated 💳"
-        body = f"Your fee of ₹{amount_str} for Class {batch_name} due on {due_date_str} has been updated."
+        if fee.due_date:
+            due_date_str = fee.due_date.strftime('%Y-%m-%d')
+            body = f"Your fee of ₹{amount_str} for Class {batch_name} due on {due_date_str} has been updated."
+        else:
+            body = f"Your fee of ₹{amount_str} for Class {batch_name} has been updated."
 
         extra_data = {
             "fee_id": str(fee.id),

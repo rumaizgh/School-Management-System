@@ -74,7 +74,7 @@ class Fee(models.Model):
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=255, null=True, blank=True)
-    due_date = models.DateField()
+    due_date = models.DateField(null=True, blank=True)
 
     def total_paid(self):
         return sum(p.amount for p in self.payments.all())

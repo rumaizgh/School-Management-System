@@ -47,6 +47,7 @@ class AttendanceRecord(models.Model):
     )
     student = models.ForeignKey(UserData, limit_choices_to={'user_type': 'student'}, on_delete=models.CASCADE)
     status = models.CharField(max_length=7, choices=STATUS_CHOICES, default="absent")
+    leave_reason = models.CharField(max_length=255, null=True, blank=True, default=None)
 
     class Meta:
         unique_together = ('session', 'student')
