@@ -49,6 +49,9 @@ class UserDataSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         subjects = validated_data.pop('subject', None)
+        classs = validated_data.pop('classs', None)
+        groups = validated_data.pop('groups', None)
+        user_permissions = validated_data.pop('user_permissions', None)
         password = validated_data.pop('password', None)
         user = UserData(**validated_data)
         if password:
@@ -56,6 +59,12 @@ class UserDataSerializer(serializers.ModelSerializer):
         user.save()
         if subjects is not None:
             user.subject.set(subjects)
+        if classs is not None:
+            user.classs.set(classs)
+        if groups is not None:
+            user.groups.set(groups)
+        if user_permissions is not None:
+            user.user_permissions.set(user_permissions)
         return user
 
     def update(self, instance, validated_data):
@@ -104,6 +113,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         classs = validated_data.pop("classs", [])
         subject = validated_data.pop("subject", [])
+        groups = validated_data.pop("groups", [])
+        user_permissions = validated_data.pop("user_permissions", [])
         password = validated_data.pop("password", None)
 
         user = UserData(**validated_data)
@@ -111,8 +122,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
             user.set_password(password)
         user.save()
 
-        user.classs.set(classs)
-        user.subject.set(subject)
+        if classs:
+            user.classs.set(classs)
+        if subject:
+            user.subject.set(subject)
+        if groups:
+            user.groups.set(groups)
+        if user_permissions:
+            user.user_permissions.set(user_permissions)
 
         return user
 
