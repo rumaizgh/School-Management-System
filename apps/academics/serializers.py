@@ -142,6 +142,7 @@ class TimeTableSerializer(serializers.ModelSerializer):
             'end_time',
             'is_exam',
             'session',
+            'created_at',
         ]
 
     def get_session(self, obj):

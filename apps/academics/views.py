@@ -76,7 +76,12 @@ class ViewAllClassTeacher(APIView):
     permission_classes=[IsTeacher]
     def get(self,request,id=None):
         teacher = request.user
-        classs = Batch.objects.filter(subjects__teacher=teacher).distinct()
+        classs = Batch.objects.filter(
+            Q(subjects__teacher=teacher) |
+            Q(timetable__teacher=teacher) |
+            Q(id__in=teacher.classs.values_list('id', flat=True))
+        ).distinct()
+        classs = InstituteFilterBackend().filter_queryset(request, classs, None)
         serializer = BatchSerializer(classs,many=True)
         return Response(serializer.data)
     
@@ -944,11 +949,19 @@ class StudentExamAnalyticsAPIView(APIView):
             lowest_mark = 0.0
             pass_percentage = 0.0
 
+        question_paper = None
+        if exam.question_paper:
+            try:
+                question_paper = request.build_absolute_uri(exam.question_paper.url)
+            except Exception:
+                question_paper = None
+
         return Response({
             "exam_id": exam.id,
             "obtained_mark": obtained_mark,
             "total_mark": total_mark,
             "is_pass": is_pass,
+            "question_paper": question_paper,
             "class_analytics": {
                 "average_mark": average_mark,
                 "highest_mark": highest_mark,

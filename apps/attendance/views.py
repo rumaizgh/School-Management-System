@@ -76,19 +76,21 @@ class AttendanceSessionCreate(APIView):
             return Response({"error": "Teacher ID is required"}, status=400)
 
         teacher = get_institute_scoped_object_or_404(UserData, request, id=id, user_type="teacher")
-        # Get subjects of this teacher
-        subjects = Subject.objects.filter(teacher=teacher).values("id", "subject_name")
-        subjects = InstituteFilterBackend().filter_queryset(request, subjects, None)
-        subjects_data = list(subjects)
+        # Get subjects of this teacher (assigned directly or via timetable)
+        subjects_qs = Subject.objects.filter(
+            Q(teacher=teacher) | Q(timetable__teacher=teacher)
+        ).distinct()
+        subjects_qs = InstituteFilterBackend().filter_queryset(request, subjects_qs, None)
+        subjects_data = list(subjects_qs.values("id", "subject_name"))
 
-        # Get batches of this teacher
-        batches = (
-            Batch.objects.filter(subjects__teacher=teacher)
-            .values("id", "classs")
-            .distinct()
-        )
-        batches = InstituteFilterBackend().filter_queryset(request, batches, None)
-        batches_data = list(batches)
+        # Get batches of this teacher (assigned directly, via timetable, or via subjects)
+        batches_qs = Batch.objects.filter(
+            Q(subjects__teacher=teacher) |
+            Q(timetable__teacher=teacher) |
+            Q(id__in=teacher.classs.values_list('id', flat=True))
+        ).distinct()
+        batches_qs = InstituteFilterBackend().filter_queryset(request, batches_qs, None)
+        batches_data = list(batches_qs.values("id", "classs"))
 
         return Response({"subjects": subjects_data, "batches": batches_data})
 

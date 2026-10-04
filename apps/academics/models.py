@@ -139,6 +139,7 @@ class TimeTable(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
     is_exam = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.start_time} - {self.end_time} ({self.classs})"
