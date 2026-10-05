@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.contrib.auth.hashers import make_password
@@ -78,11 +79,20 @@ class UserData(AbstractUser):
             models.CheckConstraint(
                 check=(~Q(user_type='admin') | Q(institute__isnull=False)),
                 name='admin_must_have_institute'
+            ),
+            models.CheckConstraint(
+                check=(~Q(user_type='student') | (Q(roll_no__isnull=False) & ~Q(roll_no=''))),
+                name='student_must_have_roll_no'
             )
         ]
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
+
+    def clean(self):
+        super().clean()
+        if self.user_type == 'student' and not self.roll_no:
+            raise ValidationError({'roll_no': 'Roll number is required for students.'})
     
     def save(self, *args, **kwargs):
         if self.password and not (

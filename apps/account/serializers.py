@@ -83,6 +83,14 @@ class UserDataSerializer(serializers.ModelSerializer):
             instance.subject.set(subjects)
         return instance
 
+    def validate(self, data):
+        user_type = data.get('user_type') or (self.instance.user_type if self.instance else None)
+        if user_type == 'student':
+            roll_no = data.get('roll_no') if 'roll_no' in data else (self.instance.roll_no if self.instance else None)
+            if not roll_no:
+                raise serializers.ValidationError({'roll_no': 'Roll number is required for students.'})
+        return data
+
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
     gender = serializers.CharField(
@@ -138,6 +146,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         institute = data.get('institute')
         if user_type == 'admin' and not institute:
             raise serializers.ValidationError({'institute': 'Institute is required for admin users.'})
+        if user_type == 'student' and not data.get('roll_no'):
+            raise serializers.ValidationError({'roll_no': 'Roll number is required for students.'})
         return data
 
     def validate_email(self, value):
