@@ -779,9 +779,60 @@ class ExamListCreateAPIView(APIView):
 
     def delete(self, request, id):
         exam = get_institute_scoped_object_or_404(Exam, request, id=id, is_deleted=False)
-        exam.is_deleted = True
-        exam.save()
-        return Response({"message": "Exam deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        from apps.attendance.models import AttendanceSession
+
+        force_delete = (
+            request.query_params.get('force', '').lower() in ['true', '1'] or
+            (isinstance(request.data, dict) and request.data.get('force') is True)
+        )
+
+        timetable = exam.timetable
+
+        # Check if another active exam shares this same timetable
+        other_active_exams = (
+            Exam.objects.filter(timetable=timetable, is_deleted=False).exclude(id=exam.id).exists()
+            if timetable else False
+        )
+
+        sessions = AttendanceSession.objects.filter(timetable=timetable) if timetable else AttendanceSession.objects.none()
+        has_attendance = any(session.records.exists() for session in sessions)
+
+        # Safety check: block accidental deletion if attendance was already recorded
+        if has_attendance and not force_delete:
+            record_count = sum(session.records.count() for session in sessions)
+            return Response(
+                {
+                    "error": f"Attendance has already been recorded for this exam session ({record_count} record(s) found).",
+                    "detail": "To permanently delete the exam along with its attendance records, pass '?force=true'.",
+                    "has_attendance": True,
+                    "records_count": record_count
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        with transaction.atomic():
+            # If no other active exam needs this timetable and sessions, clean them up
+            if not other_active_exams:
+                if sessions.exists():
+                    for session in sessions:
+                        session.records.all().delete()
+                    sessions.delete()
+
+            # Detach timetable first to prevent CASCADE from hard-deleting the exam
+            if timetable:
+                exam.timetable = None
+                exam.is_deleted = True
+                exam.save(update_fields=['timetable', 'is_deleted'])
+                if not other_active_exams:
+                    timetable.delete()
+            else:
+                exam.is_deleted = True
+                exam.save(update_fields=['is_deleted'])
+
+        return Response(
+            {"message": "Exam and allocated timetable deleted successfully."},
+            status=status.HTTP_200_OK
+        )
 
 class ExamAnalyticsAPIView(APIView):
     permission_classes = [IsAuthenticated]
