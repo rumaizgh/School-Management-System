@@ -41,14 +41,28 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class AttendanceRecordStudentSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(source='student.name', read_only=True)
-    roll_no = serializers.CharField(source='student.roll_no', read_only=True)
+    student_id = serializers.IntegerField(source='student.id', read_only=True, default=None)
+    name = serializers.CharField(source='student.name', read_only=True, default=None)
+    roll_no = serializers.CharField(source='student.roll_no', read_only=True, default=None)
+    phone = serializers.CharField(source='student.phone', read_only=True, default=None)
+    parent_contact = serializers.CharField(source='student.parent_contact', read_only=True, default=None)
     session = serializers.CharField(source='session.teacher', read_only=True)
     profile = serializers.SerializerMethodField()
 
     class Meta:
         model = AttendanceRecord
-        fields = ['id', 'name', 'roll_no', 'status', 'session', 'profile', 'leave_reason']
+        fields = [
+            'id',
+            'student_id',
+            'name',
+            'roll_no',
+            'phone',
+            'parent_contact',
+            'status',
+            'session',
+            'profile',
+            'leave_reason',
+        ]
 
     def get_profile(self, obj):
         if obj.student and obj.student.profile:

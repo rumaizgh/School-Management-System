@@ -17,6 +17,7 @@ from apps.academics.models import TimeTable
 from apps.subject.models import Subject
 from .resources import FeeResource, MarkResource
 from django.http import HttpResponse
+from django.db import transaction
 from django.db.models import Count, Q, Sum, Avg, Max, Min, F, Value, DecimalField
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -835,7 +836,7 @@ class ExamMarksAPIView(APIView):
 
     def get(self, request, exam_id):
         exam = get_institute_scoped_object_or_404(Exam, request, id=exam_id, is_deleted=False)
-        marks = Mark.objects.filter(exam=exam)
+        marks = Mark.objects.filter(exam=exam).select_related('student', 'exam', 'exam__subject', 'exam__batch')
         marks = InstituteFilterBackend().filter_queryset(request, marks, None)
         serializer = MarkSerializer(marks, many=True, context={'request': request})
         return Response(serializer.data)
@@ -848,27 +849,73 @@ class ExamMarksAPIView(APIView):
             
         marks_data = serializer.validated_data.get('marks', [])
         
-        for item in marks_data:
-            student_id = item.get('student_id')
-            obtained = item.get('obtained_mark')
-            
-            student = get_institute_scoped_object_or_404(UserData, request, id=student_id, user_type='student')
-            
-            mark, created = Mark.objects.get_or_create(
-                exam=exam,
-                student=student,
-                defaults={
-                    'obtained_mark': obtained if obtained is not None else 0
-                }
-            )
-            
-            if not created:
-                mark.obtained_mark = obtained if obtained is not None else 0
-                mark.save()
+        saved_marks = []
+        with transaction.atomic():
+            for item in marks_data:
+                student_id = item.get('student_id')
+                obtained = item.get('obtained_mark')
+                
+                # 1. Lookup student
+                student = UserData.objects.filter(id=student_id).first()
+                if not student:
+                    return Response(
+                        {"error": f"Student with ID {student_id} not found."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
+                # Skip non-students (e.g. teachers who were in the class/batch user list)
+                if student.user_type != 'student':
+                    continue
+
+                # 2. Validate enrollment in the exam's batch or institute
+                is_in_batch = student.classs.filter(id=exam.batch_id).exists()
+                is_in_institute = (
+                    (exam.institute and student.institute == exam.institute) or
+                    (request.user.institute and student.institute == request.user.institute) or
+                    request.user.is_superuser
+                )
+
+                if not is_in_batch and not is_in_institute:
+                    return Response(
+                        {
+                            "error": f"Student '{student.name}' (ID {student_id}) is not enrolled in batch '{exam.batch.classs}'."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Auto-sync institute if missing
+                if not student.institute and exam.institute:
+                    student.institute = exam.institute
+                    student.save(update_fields=['institute'])
+
+                # 3. Validate obtained mark doesn't exceed total mark
+                if exam.total_mark is not None and obtained is not None and obtained > exam.total_mark:
+                    return Response(
+                        {
+                            "error": f"Obtained mark ({obtained}) exceeds exam total mark ({exam.total_mark}) for student '{student.name}'."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                mark, created = Mark.objects.get_or_create(
+                    exam=exam,
+                    student=student,
+                    defaults={
+                        'obtained_mark': obtained if obtained is not None else 0
+                    }
+                )
+                
+                if not created:
+                    mark.obtained_mark = obtained if obtained is not None else 0
+                    mark.save()
+
+                saved_marks.append(mark)
+
+        # Dispatch notifications after database transaction completes
+        for mark in saved_marks:
             send_marks_released_notification(mark)
 
-        return Response({"message": "Marks successfully updated."}, status=status.HTTP_200_OK)
+        return Response({"message": f"Marks successfully updated for {len(saved_marks)} student(s)."}, status=status.HTTP_200_OK)
 
 
 class StudentExamListAPIView(APIView):

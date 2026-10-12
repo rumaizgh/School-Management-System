@@ -208,11 +208,17 @@ class MarkSerializer(serializers.ModelSerializer):
     batch_name = serializers.CharField(source='exam.batch.classs', read_only=True)
     student_name = serializers.CharField(source='student.name', read_only=True)
     student_image = serializers.SerializerMethodField()
+    phone = serializers.CharField(source='student.phone', read_only=True, default=None)
+    parent_contact = serializers.CharField(source='student.parent_contact', read_only=True, default=None)
     grade = serializers.SerializerMethodField()
     
     class Meta:
         model = Mark
-        fields = ['id', 'exam', 'exam_name', 'subject', 'subject_name', 'student', 'student_name', 'student_image', 'batch', 'batch_name', 'total_mark', 'obtained_mark', 'percentage', 'grade']
+        fields = [
+            'id', 'exam', 'exam_name', 'subject', 'subject_name',
+            'student', 'student_name', 'student_image', 'phone', 'parent_contact',
+            'batch', 'batch_name', 'total_mark', 'obtained_mark', 'percentage', 'grade'
+        ]
         read_only_fields = ['id', 'subject', 'subject_name', 'batch', 'batch_name', 'total_mark', 'percentage']
 
     def get_student_image(self, obj):
