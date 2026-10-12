@@ -457,7 +457,7 @@ class ExportMark(APIView):
             marks = marks.filter(exam__subject_id=subject_id)
 
         marks = InstituteFilterBackend().filter_queryset(request, marks, None)
-        dataset = MarkResource(request=request).export(queryset=marks)
+        dataset = MarkResource().export(queryset=marks)
 
         if file_format == 'csv':
             content_type = 'text/csv'
@@ -503,7 +503,7 @@ class MarkExportPreview(APIView):
             marks = marks.filter(exam__subject_id=subject_id)
 
         marks = InstituteFilterBackend().filter_queryset(request, marks, None)
-        resource = MarkResource(request=request)
+        resource = MarkResource()
         dataset = resource.export(queryset=marks)
 
         return Response({

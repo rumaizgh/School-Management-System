@@ -186,10 +186,7 @@ class Mark(models.Model):
     def save(self, *args, **kwargs):
         total = self.exam.total_mark if (self.exam and self.exam.total_mark) else None
         if total and total > 0:
-            from decimal import Decimal
-            obtained = Decimal(str(self.obtained_mark)) if self.obtained_mark is not None else Decimal('0')
-            total_dec = Decimal(str(total))
-            self.percentage = (obtained / total_dec) * 100
+            self.percentage = (self.obtained_mark / total) * 100
         else:
             self.percentage = 0
         super().save(*args, **kwargs)
