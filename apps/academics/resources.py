@@ -26,6 +26,7 @@ class MarkResource(resources.ModelResource):
     student_name = fields.Field(column_name='Student Name')
     student_email = fields.Field(column_name='Student Email')
     student_roll_no = fields.Field(column_name='Roll No')
+    student_profile = fields.Field(column_name='profile')
     exam_name = fields.Field(column_name='Exam Name')
     subject_name = fields.Field(column_name='Subject')
     batch_name = fields.Field(column_name='Batch Name')
@@ -36,11 +37,15 @@ class MarkResource(resources.ModelResource):
     class Meta:
         model = Mark
         fields = (
-            'id', 'student_roll_no', 'student_name', 'student_email',
+            'id', 'student_roll_no', 'student_name', 'student_email', 'student_profile',
             'batch_name', 'exam_name', 'subject_name', 'total_mark',
             'obtained_mark', 'percentage'
         )
         export_order = fields
+
+    def __init__(self, request=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.request = request
 
     def dehydrate_student_name(self, obj):
         return obj.student.name if obj.student else ""
@@ -50,6 +55,16 @@ class MarkResource(resources.ModelResource):
 
     def dehydrate_student_roll_no(self, obj):
         return obj.student.roll_no if obj.student else ""
+
+    def dehydrate_student_profile(self, obj):
+        if obj.student and obj.student.profile:
+            try:
+                if self.request is not None:
+                    return self.request.build_absolute_uri(obj.student.profile.url)
+            except Exception:
+                pass
+            return obj.student.profile.url
+        return None
 
     def dehydrate_exam_name(self, obj):
         return obj.exam.exam_name if obj.exam else ""
