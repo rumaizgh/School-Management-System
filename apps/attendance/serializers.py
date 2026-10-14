@@ -47,6 +47,10 @@ class AttendanceRecordStudentSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(source='student.phone', read_only=True, default=None)
     parent_contact = serializers.CharField(source='student.parent_contact', read_only=True, default=None)
     session = serializers.CharField(source='session.teacher', read_only=True)
+    session_id = serializers.IntegerField(source='session.id', read_only=True, default=None)
+    date = serializers.CharField(source='session.date', read_only=True, default=None)
+    start_time = serializers.CharField(source='session.time', read_only=True, default=None)
+    end_time = serializers.CharField(source='session.end_time', read_only=True, default=None)
     profile = serializers.SerializerMethodField()
 
     class Meta:
@@ -60,6 +64,10 @@ class AttendanceRecordStudentSerializer(serializers.ModelSerializer):
             'parent_contact',
             'status',
             'session',
+            'session_id',
+            'date',
+            'start_time',
+            'end_time',
             'profile',
             'leave_reason',
         ]

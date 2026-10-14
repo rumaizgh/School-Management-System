@@ -191,14 +191,14 @@ class AttendanceRecordView(APIView):
         session_qs = AttendanceSession.objects.filter(id=id)
         if session_qs.exists():
             session = session_qs.first()
-            if request.user.institute and session.institute and session.institute != request.user.institute and not request.user.is_superuser:
+            if getattr(request.user, 'institute', None) and session.institute and session.institute != request.user.institute and not getattr(request.user, 'is_superuser', False):
                 return Response({"error": "You do not have permission to access this session."}, status=status.HTTP_403_FORBIDDEN)
             records = AttendanceRecord.objects.filter(session=session)
         else:
             student_qs = UserData.objects.filter(id=id, user_type='student')
             if student_qs.exists():
                 student = student_qs.first()
-                if request.user.institute and student.institute and student.institute != request.user.institute and not request.user.is_superuser:
+                if getattr(request.user, 'institute', None) and student.institute and student.institute != request.user.institute and not getattr(request.user, 'is_superuser', False):
                     return Response({"error": "You do not have permission to access this student."}, status=status.HTTP_403_FORBIDDEN)
                 records = AttendanceRecord.objects.filter(student=student)
             else:
