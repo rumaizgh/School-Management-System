@@ -160,13 +160,14 @@ class TimeTableSerializer(serializers.ModelSerializer):
 
 class PaymentSerializer(serializers.ModelSerializer):
     student = serializers.SerializerMethodField()
+    student_name = serializers.CharField(source='fee.student.name', read_only=True, default=None)
     classs_name = serializers.CharField(source='fee.batch.classs', read_only=True)
     balance = serializers.SerializerMethodField()
     total_paid = serializers.SerializerMethodField()
     
     class Meta:
         model = Payment
-        fields = ['id', 'fee', 'amount', 'payment_method', 'paid_on', 'student', 'classs_name', 'balance', 'total_paid']
+        fields = ['id', 'fee', 'student_name', 'amount', 'payment_method', 'paid_on', 'student', 'classs_name', 'balance', 'total_paid']
 
     def get_total_paid(self, obj):
         total = Payment.objects.filter(

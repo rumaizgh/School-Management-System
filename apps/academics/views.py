@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
@@ -344,8 +345,77 @@ class CreatePayment(APIView):
         paginator = CustomPagination()
         paginated_payments = paginator.paginate_queryset(payments, request)
 
+        if paginated_payments is None:
+            serializer = PaymentSerializer(payments, many=True, context={'request': request})
+            return Response({
+                "status": True,
+                "message": "Data fetched successfully",
+                "count": payments.count(),
+                "total_records": payments.count(),
+                "total_pages": 1,
+                "current_page": 1,
+                "page_size": payments.count(),
+                "next": None,
+                "previous": None,
+                "daily_summary": {},
+                "results": serializer.data
+            })
+
         serializer = PaymentSerializer(paginated_payments, many=True, context={'request': request})
-        return paginator.get_paginated_response(serializer.data)
+
+        # Calculate daily_summary for distinct dates present on this page
+        distinct_dates = set()
+        for p in paginated_payments:
+            if p.paid_on:
+                d_str = p.paid_on.strftime('%Y-%m-%d') if hasattr(p.paid_on, 'strftime') else str(p.paid_on)[:10]
+                distinct_dates.add(d_str)
+
+        daily_summary = {}
+        if distinct_dates:
+            day_stats = (
+                payments.filter(paid_on__in=distinct_dates)
+                .values('paid_on')
+                .annotate(
+                    total=Coalesce(Sum('amount'), Value(0, output_field=DecimalField())),
+                    cash=Coalesce(Sum('amount', filter=Q(payment_method__iexact='cash')), Value(0, output_field=DecimalField())),
+                    upi=Coalesce(Sum('amount', filter=Q(payment_method__iexact='upi')), Value(0, output_field=DecimalField())),
+                    other=Coalesce(
+                        Sum('amount', filter=~Q(payment_method__iexact='cash') & ~Q(payment_method__iexact='upi')),
+                        Value(0, output_field=DecimalField())
+                    ),
+                    count=Count('id')
+                )
+            )
+
+            def _fmt(val):
+                if val is None:
+                    return 0
+                d = Decimal(str(val))
+                return int(d) if d % 1 == 0 else float(round(d, 2))
+
+            for stat in sorted(day_stats, key=lambda s: str(s['paid_on']), reverse=True):
+                d_key = stat['paid_on'].strftime('%Y-%m-%d') if hasattr(stat['paid_on'], 'strftime') else str(stat['paid_on'])[:10]
+                daily_summary[d_key] = {
+                    "total": _fmt(stat['total']),
+                    "cash": _fmt(stat['cash']),
+                    "upi": _fmt(stat['upi']),
+                    "other": _fmt(stat['other']),
+                    "count": stat['count'],
+                }
+
+        return Response({
+            "status": True,
+            "message": "Data fetched successfully",
+            "count": paginator.page.paginator.count,
+            "total_records": paginator.page.paginator.count,
+            "total_pages": paginator.page.paginator.num_pages,
+            "current_page": paginator.page.number,
+            "page_size": paginator.get_page_size(request),
+            "next": paginator.get_next_link(),
+            "previous": paginator.get_previous_link(),
+            "daily_summary": daily_summary,
+            "results": serializer.data
+        })
     
     def post(self, request):
         serializer = PaymentSerializer(data=request.data, context={'request': request})

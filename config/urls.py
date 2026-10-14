@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/notifications/', include('apps.notifications.urls')),
     path('api/payroll/', include('apps.payroll.urls')),
     path('api/reports/', include('apps.reports.urls')),
+    path('api/finance/', include('apps.finance.urls')),
 
     # Web Admin Portal
     path('dashboard/', include('apps.web_admin.urls')),
