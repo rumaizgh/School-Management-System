@@ -81,16 +81,44 @@ class NotificationHistoryView(APIView):
 
     def get(self, request):
         now = timezone.now()
+        user = request.user
+
+        # Mark pending notifications as DELIVERED for this active user
         NotificationHistory.objects.filter(
-            user=request.user,
+            user=user,
             delivery_status=NotificationHistory.STATUS_PENDING
         ).update(
             delivery_status=NotificationHistory.STATUS_DELIVERED,
             delivered_at=now
         )
 
-        notifications_qs = NotificationHistory.objects.filter(user=request.user)
-        unread_count = notifications_qs.filter(is_read=False).count()
+        if user.user_type in ['admin', 'superadmin'] or user.is_superuser or user.is_staff:
+            # 3. Admin: Return either broadcasts sent by this admin or notifications addressed to the admin account
+            admin_notifs = NotificationHistory.objects.filter(user=user)
+            sent_broadcast_ids = NotificationHistory.objects.filter(
+                data_payload__sender_id=str(user.id)
+            ).values_list('broadcast_id', flat=True).distinct()
+
+            from django.db.models import Min
+            rep_sent_ids = NotificationHistory.objects.filter(
+                broadcast_id__in=sent_broadcast_ids
+            ).values('broadcast_id').annotate(min_id=Min('id')).values_list('min_id', flat=True)
+
+            notifications_qs = NotificationHistory.objects.filter(
+                models.Q(id__in=admin_notifs.values_list('id', flat=True)) |
+                models.Q(id__in=rep_sent_ids)
+            )
+        elif getattr(user, 'user_type', None) == 'parent' and user.phone:
+            # 2. Parent: Return notifications addressed to their child's student_id or the parent's user_id
+            child_ids = UserData.objects.filter(parent_contact=user.phone, is_active=True).values_list('id', flat=True)
+            notifications_qs = NotificationHistory.objects.filter(
+                models.Q(user=user) | models.Q(user_id__in=child_ids)
+            )
+        else:
+            # 1. Student / Others: Return ONLY notifications where notification.user_id == authenticated_student.id
+            notifications_qs = NotificationHistory.objects.filter(user=user)
+
+        unread_count = NotificationHistory.objects.filter(user=user, is_read=False).count()
 
         notif_type = request.query_params.get('type')
         if notif_type:
@@ -101,7 +129,7 @@ class NotificationHistoryView(APIView):
             notifications_qs = notifications_qs.filter(broadcast_id=broadcast_id.strip())
 
         paginator = CustomPagination()
-        paginated_qs = paginator.paginate_queryset(notifications_qs, request)
+        paginated_qs = paginator.paginate_queryset(notifications_qs.order_by('-created_at'), request)
         serializer = NotificationHistorySerializer(paginated_qs, many=True)
 
         response = paginator.get_paginated_response(serializer.data)
@@ -392,38 +420,73 @@ class SendBroadcastView(APIView):
         notif_type = serializer.validated_data.get('type')
         target_type = serializer.validated_data['target_type']
         target_ids = serializer.validated_data['target_ids']
-        data_payload = serializer.validated_data.get('data_payload', {})
+        data_payload = dict(serializer.validated_data.get('data_payload') or {})
+
+        # Ensure broadcast_target and target_summary are preserved as required by frontend contract
+        if 'broadcast_target' not in data_payload:
+            data_payload['broadcast_target'] = target_type
+        if 'target_summary' not in data_payload:
+            if target_type == 'all':
+                data_payload['target_summary'] = 'All Students & Parents (School-wide)'
+            elif target_type in ['class', 'section']:
+                data_payload['target_summary'] = f"{len(target_ids)} Class(es)"
+            elif target_type in ['student', 'students']:
+                data_payload['target_summary'] = f"{len(target_ids)} Student(s)"
+            else:
+                data_payload['target_summary'] = str(target_type)
+
+        data_payload['sender_id'] = str(request.user.id)
+        data_payload['sender_name'] = str(request.user.name or request.user.email or '')
 
         # Resolve target users (only active users)
         target_users_qs = UserData.objects.filter(is_active=True)
 
         # If admin belongs to an institute, filter users by institute
-        if hasattr(request.user, 'institute') and request.user.institute:
+        if hasattr(request.user, 'institute') and request.user.institute and not request.user.is_superuser:
             target_users_qs = target_users_qs.filter(
                 models.Q(institute=request.user.institute) |
                 models.Q(classs__institute=request.user.institute)
             ).distinct()
 
-        if target_type in ['class', 'section']:
+        if target_type == 'all':
+            target_users_qs = target_users_qs.filter(user_type__in=['student', 'teacher'])
+        elif target_type in ['class', 'section']:
             if target_ids:
-                target_users_qs = target_users_qs.filter(classs__id__in=target_ids).distinct()
+                target_users_qs = target_users_qs.filter(
+                    user_type='student',
+                    classs__id__in=target_ids
+                ).distinct()
+            else:
+                target_users_qs = target_users_qs.none()
+        elif target_type in ['student', 'students']:
+            # MUST NOT leak to other classmates or school!
+            if target_ids:
+                target_users_qs = target_users_qs.filter(
+                    user_type='student',
+                    id__in=target_ids
+                ).distinct()
+            else:
+                target_users_qs = target_users_qs.none()
+        elif target_type in ['teacher', 'teachers']:
+            if target_ids:
+                target_users_qs = target_users_qs.filter(
+                    user_type='teacher',
+                    id__in=target_ids
+                ).distinct()
+            else:
+                target_users_qs = target_users_qs.filter(user_type='teacher')
         elif target_type == 'user':
             if target_ids:
                 target_users_qs = target_users_qs.filter(id__in=target_ids).distinct()
-        elif target_type in ['student', 'students']:
-            target_users_qs = target_users_qs.filter(user_type='student')
-        elif target_type in ['teacher', 'teachers']:
-            target_users_qs = target_users_qs.filter(user_type='teacher')
+            else:
+                target_users_qs = target_users_qs.none()
         elif target_type == 'role':
             if target_ids:
-                target_users_qs = target_users_qs.filter(user_type__in=target_ids)
-
+                target_users_qs = target_users_qs.filter(user_type__in=target_ids).distinct()
+            else:
+                target_users_qs = target_users_qs.none()
 
         target_user_ids = list(target_users_qs.values_list('id', flat=True))
-
-        # Always include sending admin so they have a history record marked as READ
-        if request.user.id and request.user.id not in target_user_ids:
-            target_user_ids.append(request.user.id)
 
         screen = data_payload.get('screen')
         extra_data = {k: v for k, v in data_payload.items() if k != 'screen'}
