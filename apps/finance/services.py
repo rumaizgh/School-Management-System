@@ -94,6 +94,18 @@ def resolve_period_dates(period='this_month', start_date_str=None, end_date_str=
     - custom: between start_date 00:00:00 and end_date 23:59:59 (YYYY-MM-DD)
     """
     now = timezone.now()
+
+    # Sanitize string inputs from frontend query parameters
+    if start_date_str is not None:
+        s = str(start_date_str).strip()
+        start_date_str = None if s.lower() in ['', 'null', 'undefined', 'none'] else s
+
+    if end_date_str is not None:
+        e = str(end_date_str).strip()
+        end_date_str = None if e.lower() in ['', 'null', 'undefined', 'none'] else e
+
+    if period is not None and str(period).strip().lower() in ['', 'null', 'undefined', 'none']:
+        period = 'this_month'
     period_key = (period or 'this_month').lower().strip()
 
     # 1. Custom date range (if explicitly requested as 'custom' or if dates are provided)
@@ -593,8 +605,8 @@ def generate_financial_excel_report(institute, period_info, type_filter, transac
             tx.date.strftime("%Y-%m-%d %H:%M") if tx.date else "",
             type_display,
             tx.title,
-            tx.category.replace('_', ' ').title(),
-            tx.payment_method.replace('_', ' ').title(),
+            str(tx.category or '').replace('_', ' ').title(),
+            str(tx.payment_method or '').replace('_', ' ').title(),
             tx.reference_number or "-",
             tx.payment_reference or "-",
             float(tx.amount),

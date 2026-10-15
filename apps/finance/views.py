@@ -34,7 +34,10 @@ class IsInstitutionalAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        return getattr(request.user, 'user_type', None) in ['admin', 'superadmin']
+        return (
+            getattr(request.user, 'user_type', None) in ['admin', 'superadmin'] or
+            getattr(request.user, 'is_superuser', False)
+        )
 
 
 class FinanceBaseAPIView(APIView):
@@ -66,15 +69,26 @@ class FinanceBaseAPIView(APIView):
         Resolves the institute for the authenticated user.
         For superadmins with no institute attached, permits institute_id override or defaults.
         """
+        is_super = getattr(request.user, 'is_superuser', False) or getattr(request.user, 'user_type', None) == 'superadmin'
+
+        inst_id = request.query_params.get('institute_id')
+        if not inst_id and request.method in ['POST', 'PUT', 'PATCH']:
+            try:
+                inst_id = request.data.get('institute_id')
+            except Exception:
+                inst_id = None
+
+        if inst_id is not None and str(inst_id).strip().lower() not in ['', 'null', 'undefined', 'none']:
+            try:
+                clean_id = int(str(inst_id).strip())
+                return Institute.objects.get(id=clean_id)
+            except (ValueError, TypeError, Institute.DoesNotExist):
+                if not is_super and getattr(request.user, 'institute', None):
+                    return request.user.institute
+                return None
+
         if getattr(request.user, 'institute', None):
             return request.user.institute
-
-        inst_id = request.query_params.get('institute_id') or request.data.get('institute_id')
-        if inst_id:
-            try:
-                return Institute.objects.get(id=inst_id)
-            except Institute.DoesNotExist:
-                return None
 
         # Fallback for superadmin
         return Institute.objects.first()
@@ -258,6 +272,16 @@ class TransactionDetailView(FinanceBaseAPIView):
                 "code": "NOT_FOUND",
                 "message": f"Transaction with ID '{clean_id}' does not exist."
             }, status=status.HTTP_404_NOT_FOUND)
+
+    def get(self, request, id):
+        tx, err_response = self._resolve_transaction(request, id)
+        if err_response:
+            return err_response
+
+        return Response({
+            "status": "success",
+            "data": TransactionSerializer(tx).data
+        }, status=status.HTTP_200_OK)
 
     def patch(self, request, id):
         tx, err_response = self._resolve_transaction(request, id)
