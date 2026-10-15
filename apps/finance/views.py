@@ -1,12 +1,14 @@
 import math
 from decimal import Decimal
 
-from django.db.models import Q
+from django.db.models import Q, Sum, Value, DecimalField
+from django.db.models.functions import Coalesce, TruncDate
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status, permissions
 from rest_framework.exceptions import PermissionDenied, NotAuthenticated, AuthenticationFailed
 from rest_framework.response import Response
+from rest_framework.utils.urls import replace_query_param
 from rest_framework.views import APIView
 
 from apps.academics.models import Institute
@@ -184,11 +186,11 @@ class TransactionListView(FinanceBaseAPIView):
             page = 1
 
         try:
-            limit = int(request.query_params.get('limit', 20))
+            limit = int(request.query_params.get('limit') or request.query_params.get('page_size', 20))
             if limit < 1:
                 limit = 20
-            elif limit > 50:
-                limit = 50
+            elif limit > 100:
+                limit = 100
         except ValueError:
             limit = 20
 
@@ -201,7 +203,86 @@ class TransactionListView(FinanceBaseAPIView):
 
         serializer = TransactionSerializer(paginated_qs, many=True)
 
+        # Calculate daily_summary for distinct dates present on this page
+        distinct_dates = set()
+        for p in paginated_qs:
+            if p.date:
+                d = p.date.date() if hasattr(p.date, 'date') else None
+                if d:
+                    distinct_dates.add(d)
+
+        daily_summary = {}
+        if distinct_dates:
+            day_stats = (
+                qs.filter(date__date__in=distinct_dates)
+                .annotate(d=TruncDate('date'))
+                .values('d')
+                .annotate(
+                    total=Coalesce(Sum('amount'), Value(0, output_field=DecimalField())),
+                    cash=Coalesce(Sum('amount', filter=Q(payment_method__iexact='cash')), Value(0, output_field=DecimalField())),
+                    bank=Coalesce(Sum('amount', filter=Q(payment_method__iexact='bank_transfer') | Q(payment_method__iexact='bank')), Value(0, output_field=DecimalField())),
+                    upi=Coalesce(Sum('amount', filter=Q(payment_method__iexact='upi') | Q(payment_method__iexact='gpay')), Value(0, output_field=DecimalField())),
+                    cheque=Coalesce(Sum('amount', filter=Q(payment_method__iexact='cheque') | Q(payment_method__iexact='check')), Value(0, output_field=DecimalField())),
+                )
+            )
+
+            def _fmt(val):
+                if val is None:
+                    return 0.0
+                d = Decimal(str(val))
+                return float(round(d, 2))
+
+            for stat in sorted(day_stats, key=lambda s: str(s['d']), reverse=True):
+                d_key = stat['d'].strftime('%Y-%m-%d') if hasattr(stat['d'], 'strftime') else str(stat['d'])[:10]
+                total = _fmt(stat['total'])
+                cash = _fmt(stat['cash'])
+                upi = _fmt(stat['upi'])
+                bank = _fmt(stat['bank'])
+                cheque = _fmt(stat['cheque'])
+                other = max(0.0, round(total - (cash + upi + bank + cheque), 2))
+
+                daily_summary[d_key] = {
+                    "total": total,
+                    "cash": cash,
+                    "gpay": upi,
+                    "upi": upi,
+                    "bank_transfer": bank,
+                    "bank": bank,
+                    "cheque": cheque,
+                    "check": cheque,
+                    "other": other,
+                }
+
+        # Ensure all distinct dates are present, even if 0
+        for d in sorted(distinct_dates, reverse=True):
+            d_key = d.strftime('%Y-%m-%d') if hasattr(d, 'strftime') else str(d)[:10]
+            if d_key not in daily_summary:
+                daily_summary[d_key] = {
+                    "total": 0.0,
+                    "cash": 0.0,
+                    "gpay": 0.0,
+                    "upi": 0.0,
+                    "bank_transfer": 0.0,
+                    "bank": 0.0,
+                    "cheque": 0.0,
+                    "check": 0.0,
+                    "other": 0.0,
+                }
+
+        try:
+            base_url = request.build_absolute_uri()
+        except Exception:
+            base_url = request.path
+
+        next_link = replace_query_param(base_url, 'page', page + 1) if has_next else None
+        prev_link = replace_query_param(base_url, 'page', page - 1) if page > 1 else None
+
         return Response({
+            "count": total_records,
+            "next": next_link,
+            "previous": prev_link,
+            "daily_summary": daily_summary,
+            "results": serializer.data,
             "status": "success",
             "data": {
                 "total_records": total_records,
@@ -209,6 +290,7 @@ class TransactionListView(FinanceBaseAPIView):
                 "limit": limit,
                 "total_pages": total_pages,
                 "has_next": has_next,
+                "daily_summary": daily_summary,
                 "results": serializer.data
             }
         }, status=status.HTTP_200_OK)

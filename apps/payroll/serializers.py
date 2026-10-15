@@ -148,6 +148,8 @@ class SalaryPaymentSerializer(serializers.ModelSerializer):
     teacher_name = serializers.CharField(source='teacher.name', read_only=True)
     profile = serializers.SerializerMethodField()
     month = serializers.CharField(source='salary.month', read_only=True)
+    payment_date = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = SalaryPayment
@@ -162,6 +164,8 @@ class SalaryPaymentSerializer(serializers.ModelSerializer):
             'payment_method',
             'transaction_id',
             'paid_on',
+            'payment_date',
+            'status',
             'remarks',
         ]
         extra_kwargs = {
@@ -177,6 +181,26 @@ class SalaryPaymentSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.teacher.profile.url)
             return obj.teacher.profile.url
         return None
+
+    def get_payment_date(self, obj):
+        if obj.paid_on:
+            return obj.paid_on.strftime('%Y-%m-%dT%H:%M:%SZ')
+        return None
+
+    def get_status(self, obj):
+        if obj.salary and hasattr(obj.salary, 'payment_status'):
+            return obj.salary.payment_status
+        return 'PAID'
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if ret.get('amount') is not None:
+            ret['amount'] = float(ret['amount'])
+        if instance.paid_on and not ret.get('payment_date'):
+            ret['payment_date'] = instance.paid_on.strftime('%Y-%m-%dT%H:%M:%SZ')
+        if not ret.get('status'):
+            ret['status'] = instance.salary.payment_status if instance.salary else 'PAID'
+        return ret
 
     def validate(self, data):
         salary = data.get('salary')
