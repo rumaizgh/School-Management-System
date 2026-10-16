@@ -1,8 +1,20 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import AttendanceSessionCreate, AttendanceStudentsList, AttendanceRecordView, ViewAttendanceSessions,StudentAttendanceView,TeacherStudentAttendanceView, SearchSession,GetSessionsByClass
+from .views import (
+    AttendanceSessionCreate,
+    AttendanceStudentsList,
+    AttendanceRecordView,
+    ViewAttendanceSessions,
+    StudentAttendanceView,
+    TeacherStudentAttendanceView,
+    SearchSession,
+    GetSessionsByClass,
+    StudentLeaveRequestViewSet
+)
 
 router = DefaultRouter()
+router.register('leave-requests', StudentLeaveRequestViewSet, basename='leave-requests')
+
 
 urlpatterns = [
     path('', include(router.urls)),

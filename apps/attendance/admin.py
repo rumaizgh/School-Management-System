@@ -6,6 +6,6 @@ from .models import *
 # admin.site.register(AttendanceSession)
 # admin.site.register(AttendanceRecord)
 
-@admin.register(AttendanceSession, AttendanceRecord)
+@admin.register(AttendanceSession, AttendanceRecord, StudentLeaveRequest)
 class AttendanceAdmin(ImportExportModelAdmin):
     pass

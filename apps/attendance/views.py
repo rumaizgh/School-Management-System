@@ -1,26 +1,35 @@
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
-from .models import AttendanceSession, AttendanceRecord
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from .models import AttendanceSession, AttendanceRecord, StudentLeaveRequest
 from apps.subject.models import Subject
 from .serializers import (
     AttendanceSessionSerializer,
     AttendanceRecordSerializer,
     AttendanceRecordStudentSerializer,
-    ViewAttendanceRecordStudentSerializer
+    ViewAttendanceRecordStudentSerializer,
+    StudentLeaveRequestSerializer
 )
 from rest_framework.response import Response
 from apps.account.models import UserData
 from apps.account.serializers import UserDataSerializer
 from apps.academics.models import Batch
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
 from django.db import transaction
 from django.db.models import Q
 from apps.account.pagination import CustomPagination
+from rest_framework.pagination import PageNumberPagination
+
 from apps.academics.models import TimeTable
 from apps.account.filters import get_institute_scoped_object_or_404, InstituteFilterBackend
-from apps.notifications.services import send_attendance_absent_notification
+from apps.notifications.services import (
+    send_attendance_absent_notification,
+    send_leave_submitted_notification,
+    send_leave_approved_notification,
+    send_leave_rejected_notification
+)
 from apps.notifications.models import NotificationHistory
 
 
@@ -162,13 +171,69 @@ class GetSessionsByClass(APIView):
         return paginator.get_paginated_response(serializer.data)
     
 class AttendanceStudentsList(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, id):
         session = get_institute_scoped_object_or_404(AttendanceSession, request, id=id)
         classs = session.classs
-        students = UserData.objects.filter(classs=classs, user_type="student", is_active = True)
+        session_date = session.date
+
+        students = UserData.objects.filter(classs=classs, user_type="student", is_active=True).order_by('roll_no', 'name')
         students = InstituteFilterBackend().filter_queryset(request, students, None)
-        serializer = UserDataSerializer(students, many=True, context={'request': request})
-        return Response(serializer.data)
+
+        student_ids = [s.id for s in students]
+        leaves = StudentLeaveRequest.objects.filter(
+            student_id__in=student_ids,
+            status__in=['approved', 'pending'],
+            start_date__lte=session_date,
+            end_date__gte=session_date
+        ).order_by('-created_at')
+
+        leaves_by_student = {}
+        for l in leaves:
+            if l.student_id not in leaves_by_student:
+                leaves_by_student[l.student_id] = l
+
+        results = []
+        for s in students:
+            leave = leaves_by_student.get(s.id)
+            has_approved_leave = False
+            leave_status = None
+            leave_reason = None
+            has_pending_leave = False
+
+            if leave:
+                leave_status = leave.status
+                has_approved_leave = (leave.status == 'approved')
+                has_pending_leave = (leave.status == 'pending')
+                leave_reason = leave.formatted_reason
+
+            profile_url = None
+            if s.profile:
+                try:
+                    profile_url = request.build_absolute_uri(s.profile.url)
+                except Exception:
+                    profile_url = s.profile.url
+
+            batch_name = classs.classs if classs else None
+
+            results.append({
+                "id": s.id,
+                "name": s.name,
+                "roll_no": s.roll_no,
+                "profile": profile_url,
+                "class_name": batch_name,
+                "has_approved_leave": has_approved_leave,
+                "leave_status": leave_status,
+                "leave_reason": leave_reason,
+                "has_pending_leave": has_pending_leave,
+                "email": s.email,
+                "phone": s.phone,
+                "parent_name": s.parent_name,
+                "parent_contact": s.parent_contact,
+            })
+
+        return Response(results)
 
     def post(self, request):
         serializer = AttendanceRecordSerializer(data=request.data, many=True)
@@ -176,9 +241,22 @@ class AttendanceStudentsList(APIView):
             records = serializer.save()
             for record in records:
                 if record.status == 'absent':
-                    send_attendance_absent_notification(record.student, record.session)
+                    session_date = record.session.date
+                    approved_leave = StudentLeaveRequest.objects.filter(
+                        student=record.student,
+                        status='approved',
+                        start_date__lte=session_date,
+                        end_date__gte=session_date
+                    ).first()
+                    if approved_leave:
+                        record.is_excused = True
+                        if not record.leave_reason:
+                            record.leave_reason = approved_leave.formatted_reason
+                        record.save(update_fields=['is_excused', 'leave_reason'])
+                    else:
+                        send_attendance_absent_notification(record.student, record.session)
             return Response(serializer.data)
-        return Response(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AttendanceRecordView(APIView):
@@ -304,3 +382,255 @@ class SearchSession(APIView):
 
         serializer = AttendanceSessionSerializer(sessions, many=True, context={'request': request})
         return Response(serializer.data)
+
+
+class LeavePagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    page_query_param = 'page'
+    max_page_size = 100
+
+    def get_page_size(self, request):
+        if 'limit' in request.query_params:
+            try:
+                return min(int(request.query_params['limit']), self.max_page_size)
+            except (ValueError, TypeError):
+                pass
+        return super().get_page_size(request)
+
+    def get_paginated_response(self, data):
+        return Response({
+            "count": self.page.paginator.count,
+            "next": self.get_next_link(),
+            "previous": self.get_previous_link(),
+            "results": data
+        })
+
+
+class StudentLeaveRequestViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = StudentLeaveRequestSerializer
+    pagination_class = LeavePagination
+
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = StudentLeaveRequest.objects.all().select_related(
+            'student', 'institute', 'reviewed_by'
+        ).prefetch_related('student__classs')
+
+        # Scope by institute
+        qs = InstituteFilterBackend().filter_queryset(self.request, qs, self)
+
+        # If student, strictly see only own leave requests
+        if user.user_type == 'student':
+            qs = qs.filter(student=user)
+        else:
+            # Admin / Teacher / Superuser filters
+            student_id = self.request.query_params.get('student_id') or self.request.query_params.get('student')
+            if student_id:
+                qs = qs.filter(student_id=student_id)
+
+            class_id = self.request.query_params.get('class_id')
+            if class_id:
+                qs = qs.filter(student__classs__id=class_id)
+
+        search = self.request.query_params.get('search')
+        if search:
+            search = search.strip()
+            qs = qs.filter(
+                Q(student__name__icontains=search) |
+                Q(student__roll_no__icontains=search) |
+                Q(reason_notes__icontains=search) |
+                Q(reason_category__icontains=search)
+            )
+
+        return qs.order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+        user = request.user
+        data = request.data.copy()
+
+        if user.user_type == 'student':
+            if 'student' in data and int(data['student']) != user.id:
+                return Response(
+                    {"error": "You can only submit leave requests for yourself."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            data['student'] = user.id
+        elif 'student' not in data:
+            return Response(
+                {"student": ["This field is required."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save(status='pending')
+
+        # Auto-fill institute if empty
+        if not instance.institute:
+            if instance.student and instance.student.institute:
+                instance.institute = instance.student.institute
+            elif user.institute:
+                instance.institute = user.institute
+            instance.save(update_fields=['institute'])
+
+        # Trigger notification to School Admin
+        send_leave_submitted_notification(instance)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        user = request.user
+
+        # Student / Parent edit rule
+        if user.user_type == 'student':
+            if instance.student != user:
+                return Response(
+                    {"error": "You can only edit your own leave requests."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            if instance.status != 'pending':
+                return Response(
+                    {"error": f"Leave request is already {instance.status} and cannot be modified."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Prevent students from updating status or review fields
+            allowed_fields = {'start_date', 'end_date', 'is_half_day', 'half_day_period', 'reason_category', 'reason_notes'}
+            update_data = {k: v for k, v in request.data.items() if k in allowed_fields}
+
+            serializer = self.get_serializer(instance, data=update_data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+
+        # Admin review rule (approving or rejecting)
+        new_status = request.data.get('status')
+        if new_status:
+            if instance.status in ['approved', 'rejected']:
+                return Response(
+                    {"error": f"Leave request is already {instance.status} and locked."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if new_status not in ['approved', 'rejected']:
+                return Response(
+                    {"error": "Status must be either 'approved' or 'rejected'."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            instance.status = new_status
+            if 'admin_remarks' in request.data:
+                instance.admin_remarks = request.data.get('admin_remarks')
+            instance.reviewed_by = user
+            instance.reviewed_at = timezone.now()
+            instance.save()
+
+            if new_status == 'approved':
+                # Retroactive sync with existing attendance sessions
+                leave_reason_str = instance.formatted_reason
+                AttendanceRecord.objects.filter(
+                    student=instance.student,
+                    session__date__range=[instance.start_date, instance.end_date]
+                ).update(
+                    status='absent',
+                    leave_reason=leave_reason_str,
+                    is_excused=True
+                )
+                send_leave_approved_notification(instance)
+            elif new_status == 'rejected':
+                send_leave_rejected_notification(instance)
+
+            return Response(self.get_serializer(instance).data)
+
+        # Standard admin edit of fields
+        if instance.status in ['approved', 'rejected']:
+            return Response(
+                {"error": f"Leave request is already {instance.status} and locked."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        user = request.user
+
+        if user.user_type == 'student' and instance.student != user:
+            return Response(
+                {"error": "You can only cancel your own leave requests."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if instance.status in ['approved', 'rejected']:
+            return Response(
+                {"detail": "Official leave records cannot be deleted by students. Please contact school office."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        instance.status = 'cancelled'
+        instance.save(update_fields=['status', 'updated_at'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def approve(self, request, pk=None):
+        instance = self.get_object()
+        if request.user.user_type not in ['admin', 'superadmin'] and not request.user.is_superuser:
+            return Response(
+                {"error": "Only administrators can approve leave requests."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if instance.status in ['approved', 'rejected']:
+            return Response(
+                {"error": f"Leave request is already {instance.status} and locked."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        instance.status = 'approved'
+        instance.admin_remarks = request.data.get('admin_remarks', instance.admin_remarks)
+        instance.reviewed_by = request.user
+        instance.reviewed_at = timezone.now()
+        instance.save()
+
+        # Retroactive sync
+        AttendanceRecord.objects.filter(
+            student=instance.student,
+            session__date__range=[instance.start_date, instance.end_date]
+        ).update(
+            status='absent',
+            leave_reason=instance.formatted_reason,
+            is_excused=True
+        )
+        send_leave_approved_notification(instance)
+        return Response(self.get_serializer(instance).data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def reject(self, request, pk=None):
+        instance = self.get_object()
+        if request.user.user_type not in ['admin', 'superadmin'] and not request.user.is_superuser:
+            return Response(
+                {"error": "Only administrators can reject leave requests."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if instance.status in ['approved', 'rejected']:
+            return Response(
+                {"error": f"Leave request is already {instance.status} and locked."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        instance.status = 'rejected'
+        instance.admin_remarks = request.data.get('admin_remarks', instance.admin_remarks)
+        instance.reviewed_by = request.user
+        instance.reviewed_at = timezone.now()
+        instance.save()
+
+        send_leave_rejected_notification(instance)
+        return Response(self.get_serializer(instance).data)

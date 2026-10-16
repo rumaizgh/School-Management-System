@@ -22,6 +22,7 @@ from django.contrib.auth.models import update_last_login
 from django.db.models import Count, Q
 from .resources import UserDataResource
 from apps.notifications.models import NotificationHistory
+from apps.attendance.models import StudentLeaveRequest
 
 class DashboardCountAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -37,6 +38,7 @@ class DashboardCountAPI(APIView):
             )
             class_count = Batch.objects.count()
             subject_count = Subject.objects.count()
+            pending_leave_count = StudentLeaveRequest.objects.filter(status='pending').count()
         else:
             user_counts = UserData.objects.filter(institute=institute).aggregate(
                 total_students=Count('id', filter=Q(user_type='student', is_active=True)),
@@ -44,19 +46,28 @@ class DashboardCountAPI(APIView):
             )
             class_count = Batch.objects.filter(institute=institute).count()
             subject_count = Subject.objects.filter(institute=institute).count()
+            pending_leave_count = StudentLeaveRequest.objects.filter(
+                Q(institute=institute) | Q(student__institute=institute),
+                status='pending'
+            ).count()
 
         unread_count = NotificationHistory.objects.filter(user=user, is_read=False).count()
 
+        counts_data = {
+            "students": user_counts['total_students'],
+            "teachers": user_counts['total_teachers'],
+            "classes": class_count,
+            "subjects": subject_count,
+            "unread_count": unread_count,
+            "pending_leave_count": pending_leave_count
+        }
+
         return Response({
             "status": True,
-            "data": {
-                "students": user_counts['total_students'],
-                "teachers": user_counts['total_teachers'],
-                "classes": class_count,
-                "subjects": subject_count,
-                "unread_count": unread_count
-            }
+            "data": counts_data,
+            **counts_data
         })
+
 
 
 class TeacherDashboardView(APIView):

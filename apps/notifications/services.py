@@ -466,3 +466,128 @@ def send_syllabus_due_reminders():
         logger.error(f"Error executing send_syllabus_due_reminders: {e}", exc_info=True)
         return 0
 
+
+def send_leave_submitted_notification(leave_request):
+    """
+    Sends FCM Push Notification to School Admin/Principal when a new student leave request is submitted.
+    Payload: {"type": "leave_request", "leave_id": str(id)}
+    """
+    try:
+        if not leave_request or not leave_request.student:
+            return None
+
+        student = leave_request.student
+        student_name = student.name or "Student"
+        batch = student.classs.first()
+        class_name = batch.classs if batch else "Class"
+        duration_label = leave_request.duration_label
+        reason_display = leave_request.get_reason_category_display()
+
+        title = "📋 New Student Leave Request"
+        body = f"{student_name} ({class_name}) requested {duration_label} leave for {reason_display}."
+
+        extra_data = {
+            "type": "leave_request",
+            "leave_id": str(leave_request.id),
+        }
+
+        # Find admins for the institute
+        admins = UserData.objects.filter(user_type='admin', is_active=True)
+        if leave_request.institute:
+            admins = admins.filter(institute=leave_request.institute)
+        admin_ids = list(admins.values_list('id', flat=True))
+
+        if not admin_ids:
+            # Fallback to superusers
+            admin_ids = list(UserData.objects.filter(is_superuser=True, is_active=True).values_list('id', flat=True))
+
+        if not admin_ids:
+            return None
+
+        return send_fcm_notification(
+            user_ids=admin_ids,
+            title=title,
+            body=body,
+            notification_type="leave_request",
+            screen="leave_requests",
+            extra_data=extra_data,
+            save_to_history=True,
+            sender_user_id=student.id
+        )
+    except Exception as e:
+        logger.error(f"Error in send_leave_submitted_notification: {e}", exc_info=True)
+        return None
+
+
+def send_leave_approved_notification(leave_request):
+    """
+    Sends FCM Push Notification to Student & Parents when leave request is approved.
+    Payload: {"type": "leave_approved", "leave_id": str(id)}
+    """
+    try:
+        if not leave_request or not leave_request.student:
+            return None
+
+        student = leave_request.student
+        start_date_str = leave_request.start_date.strftime('%d %b %Y')
+        end_date_str = leave_request.end_date.strftime('%d %b %Y')
+
+        title = "✅ Leave Request Approved"
+        body = f"Leave request from {start_date_str} to {end_date_str} has been approved by school administration."
+
+        extra_data = {
+            "type": "leave_approved",
+            "leave_id": str(leave_request.id),
+        }
+
+        return send_fcm_notification(
+            user_ids=[student.id],
+            title=title,
+            body=body,
+            notification_type="leave_approved",
+            screen="leave_details",
+            extra_data=extra_data,
+            save_to_history=True
+        )
+    except Exception as e:
+        logger.error(f"Error in send_leave_approved_notification: {e}", exc_info=True)
+        return None
+
+
+def send_leave_rejected_notification(leave_request):
+    """
+    Sends FCM Push Notification to Student & Parents when leave request is rejected.
+    Payload: {"type": "leave_rejected", "leave_id": str(id)}
+    """
+    try:
+        if not leave_request or not leave_request.student:
+            return None
+
+        student = leave_request.student
+        start_date_str = leave_request.start_date.strftime('%d %b %Y')
+
+        title = "❌ Leave Request Declined"
+        if leave_request.admin_remarks and leave_request.admin_remarks.strip():
+            body = f"Leave request for {start_date_str} was declined. Note: {leave_request.admin_remarks.strip()}."
+        else:
+            body = f"Leave request for {start_date_str} was declined."
+
+        extra_data = {
+            "type": "leave_rejected",
+            "leave_id": str(leave_request.id),
+        }
+
+        return send_fcm_notification(
+            user_ids=[student.id],
+            title=title,
+            body=body,
+            notification_type="leave_rejected",
+            screen="leave_details",
+            extra_data=extra_data,
+            save_to_history=True
+        )
+    except Exception as e:
+        logger.error(f"Error in send_leave_rejected_notification: {e}", exc_info=True)
+        return None
+
+
