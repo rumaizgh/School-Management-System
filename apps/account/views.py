@@ -38,7 +38,10 @@ class DashboardCountAPI(APIView):
             )
             class_count = Batch.objects.count()
             subject_count = Subject.objects.count()
-            pending_leave_count = StudentLeaveRequest.objects.filter(status='pending').count()
+            try:
+                pending_leave_count = StudentLeaveRequest.objects.filter(status='pending').count()
+            except Exception:
+                pending_leave_count = 0
         else:
             user_counts = UserData.objects.filter(institute=institute).aggregate(
                 total_students=Count('id', filter=Q(user_type='student', is_active=True)),
@@ -46,10 +49,13 @@ class DashboardCountAPI(APIView):
             )
             class_count = Batch.objects.filter(institute=institute).count()
             subject_count = Subject.objects.filter(institute=institute).count()
-            pending_leave_count = StudentLeaveRequest.objects.filter(
-                Q(institute=institute) | Q(student__institute=institute),
-                status='pending'
-            ).count()
+            try:
+                pending_leave_count = StudentLeaveRequest.objects.filter(
+                    Q(institute=institute) | Q(student__institute=institute),
+                    status='pending'
+                ).count()
+            except Exception:
+                pending_leave_count = 0
 
         unread_count = NotificationHistory.objects.filter(user=user, is_read=False).count()
 
@@ -64,8 +70,7 @@ class DashboardCountAPI(APIView):
 
         return Response({
             "status": True,
-            "data": counts_data,
-            **counts_data
+            "data": counts_data
         })
 
 
