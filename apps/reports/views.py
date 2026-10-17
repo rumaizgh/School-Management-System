@@ -269,7 +269,7 @@ class TeacherReportView(APIView):
 
         now = timezone.localdate()
 
-        session_qs = AttendanceSession.objects.filter(teacher=teacher)
+        session_qs = AttendanceSession.objects.filter(teacher=teacher, is_substitution=False)
         total_sessions_taken = session_qs.count()
         sessions_this_month = session_qs.filter(
             date__year=now.year, date__month=now.month

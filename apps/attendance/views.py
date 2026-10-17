@@ -37,52 +37,109 @@ class AttendanceSessionCreate(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        user = request.user
+        is_admin = user.user_type in ['admin', 'superadmin'] or user.is_staff or user.is_superuser
+
         timetable_id = request.data.get('timetable')
+        teacher_id = request.data.get('teacher')
+        date_val = request.data.get('date')
+        time_val = request.data.get('time')
+        class_id = request.data.get('classs') or request.data.get('class')
+        is_substitution = bool(request.data.get('is_substitution', False))
+
+        recorded_by_id = request.data.get('recorded_by')
+        if recorded_by_id:
+            recorded_by = UserData.objects.filter(id=recorded_by_id).first() or user
+        else:
+            recorded_by = user
+
+        recorded_by_role = request.data.get('recorded_by_role') or getattr(recorded_by, 'user_type', 'admin' if is_admin else 'teacher')
+
+        timetable = None
+        target_teacher = None
 
         if timetable_id:
             timetable = get_object_or_404(TimeTable, id=timetable_id)
 
-            if timetable.teacher != request.user:
+            if not is_admin and not is_substitution and timetable.teacher != user:
                 return Response(
                     {"error": "You are not authorized to create a session for this timetable."},
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            if AttendanceSession.objects.filter(timetable=timetable).exists():
-                session = AttendanceSession.objects.get(timetable=timetable)
-                has_records = AttendanceRecord.objects.filter(session=session).exists()
+            if teacher_id:
+                target_teacher = get_institute_scoped_object_or_404(UserData, request, id=teacher_id, user_type='teacher')
+            else:
+                target_teacher = timetable.teacher
 
+            target_date = date_val or timetable.date or timezone.localdate()
+
+            # Check if session on this target_date already exists for this timetable
+            existing_session = AttendanceSession.objects.filter(timetable=timetable, date=target_date).first()
+            if existing_session:
+                has_records = AttendanceRecord.objects.filter(session=existing_session).exists()
                 if has_records:
                     return Response(
-                        {"error": "An attendance session with records already exists for this timetable."},
+                        {"error": "An attendance session with records already exists for this timetable on this date."},
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 else:
-                    session.delete()  # delete empty session, allow fresh one
-
-            serializer = AttendanceSessionSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(institute=request.user.institute)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    existing_session.delete()  # delete empty session, allow fresh one
 
         else:
-            teacher_id = request.data.get('teacher')
-            if int(teacher_id) != request.user.id:
+            # Manual / Ad-hoc session creation
+            if not teacher_id:
+                if user.user_type == 'teacher':
+                    teacher_id = user.id
+                else:
+                    return Response({"error": "Teacher ID is required for session creation."}, status=status.HTTP_400_BAD_REQUEST)
+
+            target_teacher = get_institute_scoped_object_or_404(UserData, request, id=teacher_id, user_type='teacher')
+
+            if not is_admin and not is_substitution and target_teacher != user:
                 return Response(
                     {"error": "You are not authorized to create a session for another teacher."},
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            serializer = AttendanceSessionSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(institute=request.user.institute)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            target_date = date_val or timezone.localdate()
+
+            if class_id and time_val:
+                existing_session = AttendanceSession.objects.filter(
+                    teacher=target_teacher,
+                    classs_id=class_id,
+                    date=target_date,
+                    time=time_val
+                ).first()
+                if existing_session:
+                    has_records = AttendanceRecord.objects.filter(session=existing_session).exists()
+                    if has_records:
+                        return Response(
+                            {"error": "An attendance session with records already exists for this slot on this date."},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    else:
+                        existing_session.delete()
+
+        serializer = AttendanceSessionSerializer(data=request.data)
+        if serializer.is_valid():
+            inst = user.institute or (timetable.institute if timetable else None) or (target_teacher.institute if target_teacher else None)
+            session = serializer.save(
+                institute=inst,
+                teacher=target_teacher,
+                recorded_by=recorded_by,
+                recorded_by_role=recorded_by_role,
+                is_substitution=is_substitution
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, id=None):
         if not id:
-            return Response({"error": "Teacher ID is required"}, status=400)
+            if request.user.user_type == 'teacher':
+                id = request.user.id
+            else:
+                return Response({"error": "Teacher ID is required"}, status=400)
 
         teacher = get_institute_scoped_object_or_404(UserData, request, id=id, user_type="teacher")
         # Get subjects of this teacher (assigned directly or via timetable)
@@ -131,7 +188,8 @@ class ViewAttendanceSessions(APIView):
 
     def delete(self, request, id):
         session = get_institute_scoped_object_or_404(AttendanceSession, request, id=id)
-        if request.user != session.teacher and not request.user.is_superuser:
+        is_admin = request.user.user_type in ['admin', 'superadmin'] or request.user.is_staff or request.user.is_superuser
+        if request.user != session.teacher and not is_admin:
             return Response(
                 {"error": "You do not have permission to delete this session"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -175,7 +233,11 @@ class AttendanceStudentsList(APIView):
 
     def get(self, request, id):
         session = get_institute_scoped_object_or_404(AttendanceSession, request, id=id)
-        classs = session.classs
+        batch_param = request.query_params.get('batch')
+        if batch_param:
+            classs = Batch.objects.filter(id=batch_param).first() or session.classs
+        else:
+            classs = session.classs
         session_date = session.date
 
         students = UserData.objects.filter(classs=classs, user_type="student", is_active=True).order_by('roll_no', 'name')
@@ -236,6 +298,27 @@ class AttendanceStudentsList(APIView):
         return Response(results)
 
     def post(self, request):
+        is_admin = request.user.user_type in ['admin', 'superadmin'] or request.user.is_staff or request.user.is_superuser
+
+        # Verify ownership / permissions for all submitted sessions
+        items = request.data if isinstance(request.data, list) else [request.data]
+        session_ids = {item.get('session') for item in items if item.get('session')}
+        sessions = AttendanceSession.objects.filter(id__in=session_ids)
+
+        for sess in sessions:
+            if not is_admin and sess.teacher != request.user and sess.recorded_by != request.user:
+                return Response(
+                    {"error": "You do not have permission to submit attendance for this session."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        # Support clean updates/resubmission: delete existing records for these (session, student) pairs
+        for item in items:
+            s_id = item.get('session')
+            stud_id = item.get('student')
+            if s_id and stud_id:
+                AttendanceRecord.objects.filter(session_id=s_id, student_id=stud_id).delete()
+
         serializer = AttendanceRecordSerializer(data=request.data, many=True)
         if serializer.is_valid():
             records = serializer.save()

@@ -141,9 +141,20 @@ class TimeTableSerializer(serializers.ModelSerializer):
             'start_time',
             'end_time',
             'is_exam',
+            'period_number',
+            'effective_from',
+            'effective_to',
+            'is_override',
             'session',
             'created_at',
         ]
+        extra_kwargs = {
+            'date': {'required': False, 'allow_null': True},
+            'period_number': {'required': False, 'allow_null': True},
+            'effective_from': {'required': False, 'allow_null': True},
+            'effective_to': {'required': False, 'allow_null': True},
+            'is_override': {'required': False},
+        }
 
     def get_session(self, obj):
         sessions = list(obj.sessions.all())

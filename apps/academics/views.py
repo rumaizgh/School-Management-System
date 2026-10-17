@@ -133,36 +133,75 @@ class TimeTablesView(APIView):
 
     def get(self, request, id=None):
         user = request.user
+        target_teacher = None
+        target_user = None
 
         if id:
-            user = get_institute_scoped_object_or_404(UserData, request, id=id)
+            try:
+                target_user = get_institute_scoped_object_or_404(UserData, request, id=id)
+            except Exception:
+                target_user = None
 
-        if user.user_type == 'teacher':
+        class_id = request.GET.get('class_id') or request.GET.get('class') or request.GET.get('batch')
+        teacher_id = request.GET.get('teacher_id') or request.GET.get('teacher')
+        date_param = request.GET.get('date')
+
+        if target_user:
+            if target_user.user_type == 'teacher':
+                if user == target_user and not user.is_active:
+                    return Response(
+                        {"error": "Teacher account is inactive."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                timetables = TimeTable.objects.filter(teacher=target_user)
+                target_teacher = target_user
+            elif target_user.user_type == 'student':
+                if user == target_user and not user.is_active:
+                    return Response(
+                        {"error": "Student account is inactive."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                student_classes = target_user.classs.all()
+                if not student_classes.exists():
+                    return Response(
+                        {"error": "No class assigned to this student."},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                timetables = TimeTable.objects.filter(classs__in=student_classes)
+            else:
+                timetables = TimeTable.objects.all()
+        elif id and not target_user:
+            batch = get_institute_scoped_object_or_404(Batch, request, id=id)
+            timetables = TimeTable.objects.filter(classs=batch)
+            class_id = batch.id
+        elif user.user_type == 'teacher' and not class_id and not teacher_id:
             if not user.is_active:
                 return Response(
                     {"error": "Teacher account is inactive."},
                     status=status.HTTP_403_FORBIDDEN
                 )
             timetables = TimeTable.objects.filter(teacher=user)
-
-        elif user.user_type == 'student':
+            target_teacher = user
+        elif user.user_type == 'student' and not class_id and not teacher_id:
             if not user.is_active:
                 return Response(
                     {"error": "Student account is inactive."},
                     status=status.HTTP_403_FORBIDDEN
                 )
             student_classes = user.classs.all()
-
             if not student_classes.exists():
                 return Response(
                     {"error": "No class assigned to this student."},
                     status=status.HTTP_404_NOT_FOUND
                 )
-
             timetables = TimeTable.objects.filter(classs__in=student_classes)
-
         else:
             timetables = TimeTable.objects.all()
+
+        if class_id:
+            timetables = timetables.filter(classs_id=class_id)
+        if teacher_id:
+            timetables = timetables.filter(teacher_id=teacher_id)
 
         is_exam = request.GET.get('is_exam')
         if is_exam is not None:
@@ -170,9 +209,117 @@ class TimeTablesView(APIView):
             timetables = timetables.filter(is_exam=is_exam_bool)
 
         timetables = InstituteFilterBackend().filter_queryset(request, timetables, None)
-        timetables = timetables.prefetch_related('sessions')
-        serializer = TimeTableSerializer(timetables, many=True)
-        return Response(serializer.data)
+
+        # Backward compatibility: return standard list if no date parameter
+        if not date_param:
+            timetables = timetables.prefetch_related('sessions')
+            serializer = TimeTableSerializer(timetables, many=True)
+            return Response(serializer.data)
+
+        # Date-Aware Timetable Logic
+        try:
+            from datetime import datetime
+            target_date = datetime.strptime(date_param.strip(), '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {"error": "Invalid date format. Expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        WEEKDAY_MAP = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+        target_day = WEEKDAY_MAP[target_date.weekday()]
+
+        # 1. Specific Date Overrides
+        override_qs = timetables.filter(
+            Q(date=target_date) | Q(is_override=True, date=target_date)
+        )
+
+        # 2. Generic Recurring Weekday Schedule
+        recurring_qs = timetables.filter(
+            day=target_day
+        ).filter(
+            Q(effective_from__isnull=True) | Q(effective_from__lte=target_date)
+        ).filter(
+            Q(effective_to__isnull=True) | Q(effective_to__gte=target_date)
+        ).exclude(
+            is_override=True
+        )
+
+        is_teacher_scope = bool(target_teacher or teacher_id)
+        is_class_scope = bool(class_id)
+
+        slots_dict = {}
+
+        # Add recurring schedules first
+        for slot in recurring_qs.select_related('teacher', 'subject', 'classs'):
+            if is_teacher_scope:
+                key = slot.start_time
+            elif is_class_scope:
+                key = slot.start_time
+            else:
+                key = (slot.classs_id, slot.start_time)
+            slots_dict[key] = slot
+
+        # Overwrite with specific date overrides
+        for slot in override_qs.select_related('teacher', 'subject', 'classs'):
+            if is_teacher_scope:
+                key = slot.start_time
+            elif is_class_scope:
+                key = slot.start_time
+            else:
+                key = (slot.classs_id, slot.start_time)
+            slots_dict[key] = slot
+
+        # Sort chronologically by start_time
+        final_slots = sorted(slots_dict.values(), key=lambda s: s.start_time)
+
+        # Prefetch matching attendance sessions for target date
+        from apps.attendance.models import AttendanceSession
+        slot_ids = [s.id for s in final_slots]
+        sessions = AttendanceSession.objects.filter(
+            date=target_date
+        ).prefetch_related('records')
+
+        session_by_timetable = {}
+        session_by_slot = {}
+        for sess in sessions:
+            if sess.timetable_id:
+                session_by_timetable[sess.timetable_id] = sess
+            session_by_slot[(sess.classs_id, sess.teacher_id, sess.time)] = sess
+
+        results = []
+        for idx, slot in enumerate(final_slots):
+            sess = session_by_timetable.get(slot.id) or session_by_slot.get((slot.classs_id, slot.teacher_id, slot.start_time))
+            session_id = sess.id if sess else None
+            is_already_recorded = bool(sess and sess.records.exists())
+            period_number = slot.period_number if slot.period_number is not None else (idx + 1)
+
+            start_t = slot.start_time.strftime("%H:%M:%S") if hasattr(slot.start_time, 'strftime') else str(slot.start_time)
+            end_t = slot.end_time.strftime("%H:%M:%S") if hasattr(slot.end_time, 'strftime') else str(slot.end_time)
+
+            results.append({
+                "id": slot.id,
+                "period_number": period_number,
+                "start_time": start_t,
+                "end_time": end_t,
+                "subject": slot.subject_id,
+                "subject_name": slot.subject.subject_name if slot.subject else None,
+                "classs": slot.classs_id,
+                "classs_name": slot.classs.classs if slot.classs else None,
+                "teacher": slot.teacher_id,
+                "teacher_name": slot.teacher.name if slot.teacher else None,
+                "is_exam": bool(slot.is_exam),
+                "session_id": session_id,
+                "is_already_recorded": is_already_recorded,
+            })
+
+        return Response({
+            "status": "success",
+            "date": target_date.strftime("%Y-%m-%d"),
+            "day": target_day,
+            "total_slots": len(results),
+            "results": results
+        }, status=status.HTTP_200_OK)
     
     def post(self, request):
         serializer = TimeTableSerializer(data=request.data)

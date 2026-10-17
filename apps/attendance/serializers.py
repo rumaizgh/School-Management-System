@@ -7,11 +7,15 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
     teacher_name = serializers.CharField(source='teacher.name', read_only=True)
     subject_name = serializers.CharField(source='subject.subject_name', read_only=True)
     classs_name = serializers.CharField(source='classs.classs', read_only=True)
+    recorded_by_name = serializers.CharField(source='recorded_by.name', read_only=True)
 
     class Meta:
         model = AttendanceSession
-        fields = ['id', 'timetable', 'teacher', 'teacher_name', 'date', 'time', 'end_time',
-                  'subject', 'subject_name', 'classs', 'classs_name', 'is_exam']
+        fields = [
+            'id', 'timetable', 'teacher', 'teacher_name', 'date', 'time', 'end_time',
+            'subject', 'subject_name', 'classs', 'classs_name', 'is_exam',
+            'recorded_by', 'recorded_by_name', 'recorded_by_role', 'is_substitution'
+        ]
         extra_kwargs = {
             'teacher': {'required': False},
             'subject': {'required': False},
@@ -20,17 +24,26 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
             'time': {'required': False},
             'end_time': {'required': False},
             'is_exam': {'required': False},
+            'recorded_by': {'required': False},
+            'recorded_by_role': {'required': False},
+            'is_substitution': {'required': False},
         }
 
     def create(self, validated_data):
         timetable = validated_data.get('timetable')
         if timetable:
-            validated_data['teacher'] = timetable.teacher
-            validated_data['subject'] = timetable.subject
-            validated_data['classs'] = timetable.classs
-            validated_data['date'] = timetable.date
-            validated_data['time'] = timetable.start_time
-            validated_data['end_time'] = timetable.end_time
+            if not validated_data.get('teacher'):
+                validated_data['teacher'] = timetable.teacher
+            if not validated_data.get('subject'):
+                validated_data['subject'] = timetable.subject
+            if not validated_data.get('classs'):
+                validated_data['classs'] = timetable.classs
+            if not validated_data.get('date'):
+                validated_data['date'] = timetable.date
+            if not validated_data.get('time'):
+                validated_data['time'] = timetable.start_time
+            if not validated_data.get('end_time'):
+                validated_data['end_time'] = timetable.end_time
             if 'is_exam' not in validated_data and hasattr(timetable, 'is_exam'):
                 validated_data['is_exam'] = timetable.is_exam
         return super().create(validated_data)

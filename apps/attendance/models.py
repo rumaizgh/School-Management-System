@@ -20,6 +20,9 @@ class AttendanceSession(models.Model):
     time = models.TimeField()
     end_time = models.TimeField(null=True, blank=True)
     is_exam = models.BooleanField(default=False)
+    recorded_by = models.ForeignKey(UserData, on_delete=models.SET_NULL, null=True, blank=True, related_name='recorded_attendance_sessions')
+    recorded_by_role = models.CharField(max_length=50, null=True, blank=True)
+    is_substitution = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if not self.institute:
@@ -27,6 +30,8 @@ class AttendanceSession(models.Model):
                 self.institute = self.teacher.institute
             elif self.classs and self.classs.institute:
                 self.institute = self.classs.institute
+            elif self.recorded_by and self.recorded_by.institute:
+                self.institute = self.recorded_by.institute
         if self.timetable and hasattr(self.timetable, 'is_exam'):
             self.is_exam = self.timetable.is_exam
         super().save(*args, **kwargs)

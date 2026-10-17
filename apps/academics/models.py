@@ -134,11 +134,15 @@ class TimeTable(models.Model):
     )
     classs = models.ForeignKey('academics.Batch', on_delete=models.CASCADE)
     subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE)
-    date = models.DateField(default=timezone.localdate)
+    date = models.DateField(default=timezone.localdate, null=True, blank=True)
     day = models.CharField(max_length=3, choices=DAY_CHOICES)
     start_time = models.TimeField()
     end_time = models.TimeField()
     is_exam = models.BooleanField(default=False)
+    period_number = models.PositiveIntegerField(null=True, blank=True)
+    effective_from = models.DateField(null=True, blank=True)
+    effective_to = models.DateField(null=True, blank=True)
+    is_override = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     def __str__(self):
