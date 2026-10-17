@@ -223,15 +223,21 @@ class MarkSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(source='student.phone', read_only=True, default=None)
     parent_contact = serializers.CharField(source='student.parent_contact', read_only=True, default=None)
     grade = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
     
     class Meta:
         model = Mark
         fields = [
             'id', 'exam', 'exam_name', 'subject', 'subject_name',
             'student', 'student_name', 'student_image', 'phone', 'parent_contact',
-            'batch', 'batch_name', 'total_mark', 'obtained_mark', 'percentage', 'grade'
+            'batch', 'batch_name', 'total_mark', 'obtained_mark', 'is_absent',
+            'percentage', 'grade', 'status'
         ]
         read_only_fields = ['id', 'subject', 'subject_name', 'batch', 'batch_name', 'total_mark', 'percentage']
+        extra_kwargs = {
+            'obtained_mark': {'required': False, 'allow_null': True},
+            'is_absent': {'required': False},
+        }
 
     def get_student_image(self, obj):
         if obj.student and obj.student.profile:
@@ -242,6 +248,8 @@ class MarkSerializer(serializers.ModelSerializer):
         return None
 
     def get_grade(self, obj):
+        if getattr(obj, 'is_absent', False):
+            return "ABSENT"
         if not obj.exam or obj.percentage is None or not obj.exam.institute:
             return None
         grade = Grade.objects.filter(
@@ -251,20 +259,40 @@ class MarkSerializer(serializers.ModelSerializer):
         ).first()
         return grade.grade if grade else None
 
+    def get_status(self, obj):
+        if getattr(obj, 'is_absent', False):
+            return "ABSENT"
+        if obj.obtained_mark is None:
+            return "PENDING"
+        if obj.exam and obj.exam.pass_mark is not None:
+            return "PASSED" if obj.obtained_mark >= obj.exam.pass_mark else "FAILED"
+        return "COMPLETED"
+
     def validate(self, data):
         exam = data.get('exam') if data.get('exam') is not None else (self.instance.exam if getattr(self, 'instance', None) else None)
         student = data.get('student') if data.get('student') is not None else (self.instance.student if getattr(self, 'instance', None) else None)
+        is_absent = data.get('is_absent', getattr(self.instance, 'is_absent', False) if self.instance else False)
 
-        # Validate obtained_mark does not exceed exam's total_mark
-        total = exam.total_mark if (exam and exam.total_mark is not None) else None
-        obtained = data.get('obtained_mark') if data.get('obtained_mark') is not None else (self.instance.obtained_mark if getattr(self, 'instance', None) else None)
-        if total is not None and obtained is not None:
-            if obtained > total:
-                raise serializers.ValidationError({'obtained_mark': f'obtained_mark cannot be greater than total_mark ({total}).'})
+        if is_absent:
+            data['obtained_mark'] = None
+        else:
+            # Validate obtained_mark does not exceed exam's total_mark
+            total = exam.total_mark if (exam and exam.total_mark is not None) else None
+            obtained = data.get('obtained_mark') if 'obtained_mark' in data else (self.instance.obtained_mark if getattr(self, 'instance', None) else None)
+            if total is not None and obtained is not None:
+                if obtained > total:
+                    raise serializers.ValidationError({'obtained_mark': f'obtained_mark cannot be greater than total_mark ({total}).'})
+                if obtained < 0:
+                    raise serializers.ValidationError({'obtained_mark': 'obtained_mark cannot be negative.'})
 
-        # Ensure the student belongs to the exam's batch
+        # Ensure the student belongs to the exam's batch or institute
         if exam and exam.batch and student:
-            if not student.classs.filter(id=exam.batch.id).exists():
+            is_in_batch = student.classs.filter(id=exam.batch.id).exists()
+            is_in_institute = (
+                (exam.institute and student.institute == exam.institute) or
+                (self.instance and self.instance.student == student)
+            )
+            if not is_in_batch and not is_in_institute:
                 raise serializers.ValidationError({'student': 'Student does not belong to the batch of the selected exam.'})
 
         # Validate that each student can only have one mark per exam
@@ -327,6 +355,7 @@ class ExamSerializer(serializers.ModelSerializer):
 class ExamAnalyticsSerializer(serializers.Serializer):
     exam_id = serializers.IntegerField()
     total_students_attended = serializers.IntegerField()
+    total_students_absent = serializers.IntegerField(default=0)
     highest_mark = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
     top_scorer_name = serializers.CharField(allow_null=True)
     lowest_mark = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
@@ -337,6 +366,7 @@ class ExamAnalyticsSerializer(serializers.Serializer):
 class BulkMarkItemSerializer(serializers.Serializer):
     student_id = serializers.IntegerField()
     obtained_mark = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True, required=False)
+    is_absent = serializers.BooleanField(required=False, default=False)
 
 class BulkMarkSerializer(serializers.Serializer):
     marks = BulkMarkItemSerializer(many=True)

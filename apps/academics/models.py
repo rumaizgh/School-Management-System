@@ -168,8 +168,9 @@ class Exam(models.Model):
 class Mark(models.Model):
     exam = models.ForeignKey('academics.Exam', on_delete=models.CASCADE, related_name='marks', null=True, blank=True)
     student = models.ForeignKey('account.UserData', on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'}, related_name='marks')
-    obtained_mark = models.DecimalField(max_digits=10, decimal_places=2)
-    percentage = models.DecimalField(max_digits=6, decimal_places=2, editable=False)
+    obtained_mark = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    is_absent = models.BooleanField(default=False)
+    percentage = models.DecimalField(max_digits=6, decimal_places=2, editable=False, null=True, blank=True)
 
     @property
     def exam_name(self):
@@ -188,12 +189,19 @@ class Mark(models.Model):
         return self.exam.total_mark if (self.exam and self.exam.total_mark) else None
 
     def save(self, *args, **kwargs):
-        total = self.exam.total_mark if (self.exam and self.exam.total_mark) else None
-        if total and total > 0:
-            self.percentage = (self.obtained_mark / total) * 100
+        if self.is_absent:
+            self.obtained_mark = None
+            self.percentage = None
+        elif self.obtained_mark is not None:
+            total = self.exam.total_mark if (self.exam and self.exam.total_mark) else None
+            if total and total > 0:
+                self.percentage = (self.obtained_mark / total) * 100
+            else:
+                self.percentage = 0
         else:
-            self.percentage = 0
+            self.percentage = None
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.exam_name} - {self.student.name} ({self.percentage}%)"
+        status_disp = "ABSENT" if self.is_absent else (f"{self.percentage}%" if self.percentage is not None else "N/A")
+        return f"{self.exam_name} - {self.student.name} ({status_disp})"

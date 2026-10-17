@@ -200,6 +200,10 @@ def send_marks_released_notification(mark):
     """
     Sends notification when exam marks are uploaded/published for a student.
     Target: The individual Student (and Parent).
+    Rule:
+      - Present: "<Student> scored <Marks>/<Total> in <Subject> (<ExamName>)"
+      - Absent: "<Student> was marked ABSENT for <Subject> in <ExamName>"
+    Never sends daily attendance alerts.
     """
     try:
         if not mark or not mark.exam or not mark.student:
@@ -208,20 +212,32 @@ def send_marks_released_notification(mark):
         exam_name = mark.exam.exam_name
         subject_name = mark.exam.subject.subject_name if mark.exam.subject else "Subject"
         student_name = mark.student.name or "Student"
-        obtained = f"{mark.obtained_mark:g}" if isinstance(mark.obtained_mark, (int, float)) else str(mark.obtained_mark)
         total = f"{mark.exam.total_mark:g}" if isinstance(mark.exam.total_mark, (int, float)) else str(mark.exam.total_mark)
 
         title = "Results Declared 🎓"
-        body = f"Marks for {exam_name} - {subject_name} have been published. {student_name} scored {obtained}/{total}."
+        if getattr(mark, 'is_absent', False):
+            body = f"{student_name} was marked ABSENT for {subject_name} in {exam_name}"
+        else:
+            obtained = f"{mark.obtained_mark:g}" if isinstance(mark.obtained_mark, (int, float)) else str(mark.obtained_mark)
+            body = f"{student_name} scored {obtained}/{total} in {subject_name} ({exam_name})"
 
         extra_data = {
             "exam_id": str(mark.exam.id),
             "student_id": str(mark.student.id),
             "mark_id": str(mark.id),
+            "is_absent": str(getattr(mark, 'is_absent', False)),
         }
 
+        # Target student and parent (if parent has user account with matching phone)
+        target_user_ids = [mark.student.id]
+        if mark.student.parent_contact:
+            parent_ids = list(
+                UserData.objects.filter(phone=mark.student.parent_contact, is_active=True).values_list('id', flat=True)
+            )
+            target_user_ids.extend(parent_ids)
+
         return send_fcm_notification(
-            user_ids=[mark.student.id],
+            user_ids=list(set(target_user_ids)),
             title=title,
             body=body,
             notification_type="exam_alert",
@@ -231,6 +247,57 @@ def send_marks_released_notification(mark):
         )
     except Exception as e:
         logger.error(f"Error in send_marks_released_notification: {e}", exc_info=True)
+        return None
+
+
+def send_mark_updated_notification(mark):
+    """
+    Sends targeted push notification strictly to this student's parent/device
+    when an individual mark correction is made.
+    Target: Strictly this student's parent (and student device).
+    Do NOT re-send notifications to other students in the batch/class.
+    """
+    try:
+        if not mark or not mark.exam or not mark.student:
+            return None
+
+        exam_name = mark.exam.exam_name
+        subject_name = mark.exam.subject.subject_name if mark.exam.subject else "Subject"
+        student_name = mark.student.name or "Student"
+        total = f"{mark.exam.total_mark:g}" if isinstance(mark.exam.total_mark, (int, float)) else str(mark.exam.total_mark)
+
+        title = "Exam Result Updated"
+        if getattr(mark, 'is_absent', False):
+            body = f"{student_name} was marked ABSENT for {subject_name} in {exam_name}."
+        else:
+            obtained = f"{mark.obtained_mark:g}" if isinstance(mark.obtained_mark, (int, float)) else str(mark.obtained_mark)
+            body = f"{student_name}'s marks for {subject_name} in {exam_name} have been updated to {obtained}/{total}."
+
+        extra_data = {
+            "exam_id": str(mark.exam.id),
+            "student_id": str(mark.student.id),
+            "mark_id": str(mark.id),
+            "is_absent": str(getattr(mark, 'is_absent', False)),
+        }
+
+        target_user_ids = [mark.student.id]
+        if mark.student.parent_contact:
+            parent_ids = list(
+                UserData.objects.filter(phone=mark.student.parent_contact, is_active=True).values_list('id', flat=True)
+            )
+            target_user_ids.extend(parent_ids)
+
+        return send_fcm_notification(
+            user_ids=list(set(target_user_ids)),
+            title=title,
+            body=body,
+            notification_type="exam_alert",
+            screen="marklist",
+            extra_data=extra_data,
+            save_to_history=True
+        )
+    except Exception as e:
+        logger.error(f"Error in send_mark_updated_notification: {e}", exc_info=True)
         return None
 
 

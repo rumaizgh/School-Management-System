@@ -34,14 +34,16 @@ def _pass_rate(marks_qs):
     """
     Given a Mark queryset, compute pass rate %.
     A mark is 'passed' when obtained_mark >= exam.pass_mark.
+    Absent marks (is_absent=True or obtained_mark is None) are excluded from denominator.
     Returns None if queryset is empty.
     """
-    total = marks_qs.count()
+    attended = marks_qs.filter(is_absent=False, obtained_mark__isnull=False)
+    total = attended.count()
     if total == 0:
         return None
     passed = sum(
-        1 for m in marks_qs.select_related('exam')
-        if m.exam and m.obtained_mark >= m.exam.pass_mark
+        1 for m in attended.select_related('exam')
+        if m.exam and m.obtained_mark is not None and m.obtained_mark >= m.exam.pass_mark
     )
     return _round_or_null((passed / total) * 100)
 
@@ -49,12 +51,13 @@ def _pass_rate(marks_qs):
 def _avg_percentage(marks_qs):
     """
     Average of (obtained_mark / total_mark * 100) across a Mark queryset.
+    Absent marks are excluded.
     Returns None if empty or total_mark is 0.
     """
     valid = [
         (float(m.obtained_mark) / float(m.exam.total_mark)) * 100
         for m in marks_qs.select_related('exam')
-        if m.exam and m.exam.total_mark and float(m.exam.total_mark) > 0
+        if not getattr(m, 'is_absent', False) and m.obtained_mark is not None and m.exam and m.exam.total_mark and float(m.exam.total_mark) > 0
     ]
     if not valid:
         return None
@@ -440,11 +443,17 @@ class StudentReportView(APIView):
             pass_mark = float(exam.pass_mark) if exam.pass_mark else None
             obtained = float(m.obtained_mark) if m.obtained_mark is not None else None
 
-            if obtained is not None and total_mark:
+            if getattr(m, 'is_absent', False):
+                is_pass = False
+                percentage = None
+                grade = "ABSENT"
+                status_str = "ABSENT"
+            elif obtained is not None and total_mark:
                 is_pass = obtained >= (pass_mark or 0)
                 raw_percentage = (obtained / total_mark) * 100
                 percentage = _round_or_null(raw_percentage)
                 grade = _grade_for_percentage(grades, raw_percentage)
+                status_str = "PASSED" if is_pass else "FAILED"
                 total_obtained_marks += obtained
                 total_possible_marks += total_mark
                 if is_pass:
@@ -453,6 +462,7 @@ class StudentReportView(APIView):
                 is_pass = None
                 percentage = None
                 grade = None
+                status_str = "PENDING"
 
             # Date from timetable if available
             exam_date = ""
@@ -466,11 +476,13 @@ class StudentReportView(APIView):
                 "subject_name": subject_name,
                 "date": exam_date,
                 "obtained_mark": obtained,
+                "is_absent": getattr(m, 'is_absent', False),
                 "total_mark": total_mark,
                 "pass_mark": pass_mark,
                 "is_pass": is_pass,
                 "percentage": percentage,
                 "grade": grade,
+                "status": status_str,
             })
 
         # ── Subject-wise performance ─────────────────────────────────────────
@@ -494,7 +506,7 @@ class StudentReportView(APIView):
             percentages = []
             for m in sorted(marks, key=lambda x: x.id):
                 exam = m.exam
-                if exam and exam.total_mark and float(exam.total_mark) > 0:
+                if exam and exam.total_mark and float(exam.total_mark) > 0 and m.obtained_mark is not None and not getattr(m, 'is_absent', False):
                     pct = (float(m.obtained_mark) / float(exam.total_mark)) * 100
                     percentages.append(pct)
 

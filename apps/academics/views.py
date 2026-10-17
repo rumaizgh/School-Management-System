@@ -29,6 +29,7 @@ from apps.notifications.services import (
     send_payment_success_notification,
     send_exam_scheduled_notification,
     send_marks_released_notification,
+    send_mark_updated_notification,
     send_timetable_updated_notification
 )
 
@@ -777,27 +778,113 @@ class MarkListCreateAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+def compute_batch_summary_stats(exam):
+    """
+    Computes summary stats for an exam batch:
+    - total_students: count of mark entries created for this exam
+    - attended_count: students who actually attended (is_absent=False, obtained_mark not null)
+    - absent_count: students marked is_absent=True
+    - class_average: average of obtained_mark across ATTENDED students only (absent not factored into denominator)
+    - highest_mark: highest mark scored among attended students
+    - lowest_mark: lowest mark scored among attended students
+    - pass_percentage: percentage of attended students who passed
+    """
+    if not exam:
+        return {}
+    marks = Mark.objects.filter(exam=exam)
+    total_students = marks.count()
+    attended_marks = marks.filter(is_absent=False, obtained_mark__isnull=False)
+    attended_count = attended_marks.count()
+    absent_count = marks.filter(is_absent=True).count()
+
+    if attended_count > 0:
+        avg_val = attended_marks.aggregate(avg=Avg('obtained_mark'))['avg']
+        max_val = attended_marks.aggregate(max=Max('obtained_mark'))['max']
+        min_val = attended_marks.aggregate(min=Min('obtained_mark'))['min']
+        passed_count = attended_marks.filter(obtained_mark__gte=exam.pass_mark).count()
+        class_average = round(float(avg_val), 2) if avg_val is not None else 0.0
+        highest_mark = round(float(max_val), 2) if max_val is not None else 0.0
+        lowest_mark = round(float(min_val), 2) if min_val is not None else 0.0
+        pass_percentage = round((passed_count / attended_count) * 100, 2)
+    else:
+        class_average = 0.0
+        highest_mark = None
+        lowest_mark = None
+        pass_percentage = 0.0
+
+    return {
+        "total_students": total_students,
+        "attended_count": attended_count,
+        "absent_count": absent_count,
+        "class_average": class_average,
+        "highest_mark": highest_mark,
+        "lowest_mark": lowest_mark,
+        "pass_mark": float(exam.pass_mark) if exam.pass_mark is not None else 0.0,
+        "pass_percentage": pass_percentage
+    }
+
+
 class MarkUpdateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def patch(self, request, id):
-        """Update a mark (partial update)"""
+    def get(self, request, id):
+        """Retrieve a mark with dynamically calculated grade, percentage, and batch summary"""
         mark = get_institute_scoped_object_or_404(Mark, request, id=id)
-        serializer = MarkSerializer(mark, data=request.data, partial=True)
+        serializer = MarkSerializer(mark, context={'request': request})
+        data = serializer.data
+        if mark.exam:
+            data['batch_summary'] = compute_batch_summary_stats(mark.exam)
+        return Response(data, status=status.HTTP_200_OK)
+
+    def patch(self, request, id):
+        """
+        Single student mark correction endpoint:
+        PATCH /academics/marks/<mark_id>/
+        Payload:
+        {
+          "obtained_mark": 72.0,
+          "is_absent": false,
+          "notify_parent": true
+        }
+        Requirements:
+        1. Targeted Single-Student Push Notification:
+           - If notify_parent == true, send push notification strictly to this student's parent/device FCM token.
+           - Do NOT re-send notifications to other students in the batch/class.
+        2. Dynamic Recalculation:
+           - Recalculates this student's grade and percentage.
+           - Updates and returns batch summary stats (attended count, class average, highest mark).
+        """
+        mark = get_institute_scoped_object_or_404(Mark, request, id=id)
+        notify_parent = bool(request.data.get('notify_parent', False))
+
+        serializer = MarkSerializer(mark, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             updated_mark = serializer.save()
-            send_marks_released_notification(updated_mark)
-            return Response(serializer.data)
+
+            if notify_parent:
+                send_mark_updated_notification(updated_mark)
+
+            resp_data = serializer.data
+            if updated_mark.exam:
+                resp_data['batch_summary'] = compute_batch_summary_stats(updated_mark.exam)
+
+            return Response(resp_data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, id):
         """Update a mark (full update)"""
         mark = get_institute_scoped_object_or_404(Mark, request, id=id)
-        serializer = MarkSerializer(mark, data=request.data)
+        notify_parent = bool(request.data.get('notify_parent', False))
+
+        serializer = MarkSerializer(mark, data=request.data, context={'request': request})
         if serializer.is_valid():
             updated_mark = serializer.save()
-            send_marks_released_notification(updated_mark)
-            return Response(serializer.data)
+            if notify_parent:
+                send_mark_updated_notification(updated_mark)
+            resp_data = serializer.data
+            if updated_mark.exam:
+                resp_data['batch_summary'] = compute_batch_summary_stats(updated_mark.exam)
+            return Response(resp_data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, id):
@@ -1059,11 +1146,15 @@ class ExamAnalyticsAPIView(APIView):
         marks = Mark.objects.filter(exam=exam)
         marks = InstituteFilterBackend().filter_queryset(request, marks, None)
         
-        total_students = marks.count()
-        if total_students == 0:
+        attended_marks = marks.filter(is_absent=False, obtained_mark__isnull=False)
+        total_attended = attended_marks.count()
+        total_absent = marks.filter(is_absent=True).count()
+
+        if total_attended == 0:
             return Response({
                 "exam_id": exam.id,
                 "total_students_attended": 0,
+                "total_students_absent": total_absent,
                 "highest_mark": None,
                 "top_scorer_name": None,
                 "lowest_mark": None,
@@ -1072,22 +1163,24 @@ class ExamAnalyticsAPIView(APIView):
                 "pass_percentage": 0.0
             })
             
-        highest_mark = marks.order_by('-obtained_mark').first()
-        lowest_mark = marks.order_by('obtained_mark').first()
-        average_mark = marks.aggregate(avg=Sum('obtained_mark'))['avg'] / total_students if total_students > 0 else 0
+        highest_mark = attended_marks.order_by('-obtained_mark').first()
+        lowest_mark = attended_marks.order_by('obtained_mark').first()
+        avg_val = attended_marks.aggregate(avg=Avg('obtained_mark'))['avg']
+        average_mark = float(avg_val) if avg_val is not None else 0.0
         
-        passed_students = marks.filter(obtained_mark__gte=exam.pass_mark).count()
-        pass_percentage = (passed_students / total_students) * 100 if total_students > 0 else 0
+        passed_students = attended_marks.filter(obtained_mark__gte=exam.pass_mark).count()
+        pass_percentage = (passed_students / total_attended) * 100 if total_attended > 0 else 0
         
         if highest_mark:
-            top_scorers = marks.filter(obtained_mark=highest_mark.obtained_mark)
-            top_scorer_names = ", ".join([m.student.name for m in top_scorers])
+            top_scorers = attended_marks.filter(obtained_mark=highest_mark.obtained_mark)
+            top_scorer_names = ", ".join([m.student.name for m in top_scorers if m.student])
         else:
             top_scorer_names = None
             
         data = {
             "exam_id": exam.id,
-            "total_students_attended": total_students,
+            "total_students_attended": total_attended,
+            "total_students_absent": total_absent,
             "highest_mark": highest_mark.obtained_mark if highest_mark else None,
             "top_scorer_name": top_scorer_names,
             "lowest_mark": lowest_mark.obtained_mark if lowest_mark else None,
@@ -1110,6 +1203,29 @@ class ExamMarksAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request, exam_id):
+        """
+        Bulk Update Marks Endpoint:
+        POST /academics/exams/<exam_id>/marks/bulk/
+        Payload:
+        {
+          "marks": [
+            { "student_id": 101, "obtained_mark": 85.0, "is_absent": false },
+            { "student_id": 102, "obtained_mark": null, "is_absent": true }
+          ]
+        }
+        Requirements:
+        1. Attendance Decoupling:
+           - If exam.session exists, verify presence, but if null or not conducted prior,
+             allow saving marks directly for class enrolled students without blocking.
+        2. Push Notification Rules:
+           - Marking is_absent: true during mark entry NEVER triggers an immediate daily attendance alert.
+           - Exam result notification is dispatched:
+             Present: "<Student> scored <Marks>/<Total> in <Subject> (<ExamName>)"
+             Absent: "<Student> was marked ABSENT for <Subject> in <ExamName>"
+        3. Analytics & Reports:
+           - is_absent=True: obtained_mark=null, status="ABSENT", grade="ABSENT"
+           - Absent students excluded from class mark average denominator.
+        """
         exam = get_institute_scoped_object_or_404(Exam, request, id=exam_id, is_deleted=False)
         serializer = BulkMarkSerializer(data=request.data)
         if not serializer.is_valid():
@@ -1121,7 +1237,8 @@ class ExamMarksAPIView(APIView):
         with transaction.atomic():
             for item in marks_data:
                 student_id = item.get('student_id')
-                obtained = item.get('obtained_mark')
+                is_absent = bool(item.get('is_absent', False))
+                obtained = item.get('obtained_mark') if not is_absent else None
                 
                 # 1. Lookup student
                 student = UserData.objects.filter(id=student_id).first()
@@ -1135,7 +1252,7 @@ class ExamMarksAPIView(APIView):
                 if student.user_type != 'student':
                     continue
 
-                # 2. Validate enrollment in the exam's batch or institute
+                # 2. Validate enrollment in the exam's batch or institute (Attendance Decoupled)
                 is_in_batch = student.classs.filter(id=exam.batch_id).exists()
                 is_in_institute = (
                     (exam.institute and student.institute == exam.institute) or
@@ -1157,33 +1274,50 @@ class ExamMarksAPIView(APIView):
                     student.save(update_fields=['institute'])
 
                 # 3. Validate obtained mark doesn't exceed total mark
-                if exam.total_mark is not None and obtained is not None and obtained > exam.total_mark:
-                    return Response(
-                        {
-                            "error": f"Obtained mark ({obtained}) exceeds exam total mark ({exam.total_mark}) for student '{student.name}'."
-                        },
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                if not is_absent and obtained is not None:
+                    if exam.total_mark is not None and obtained > exam.total_mark:
+                        return Response(
+                            {
+                                "error": f"Obtained mark ({obtained}) exceeds exam total mark ({exam.total_mark}) for student '{student.name}'."
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    if obtained < 0:
+                        return Response(
+                            {
+                                "error": f"Obtained mark cannot be negative for student '{student.name}'."
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
                 mark, created = Mark.objects.get_or_create(
                     exam=exam,
                     student=student,
                     defaults={
-                        'obtained_mark': obtained if obtained is not None else 0
+                        'obtained_mark': obtained,
+                        'is_absent': is_absent
                     }
                 )
                 
                 if not created:
-                    mark.obtained_mark = obtained if obtained is not None else 0
+                    mark.is_absent = is_absent
+                    mark.obtained_mark = obtained
                     mark.save()
 
                 saved_marks.append(mark)
 
-        # Dispatch notifications after database transaction completes
+        # Dispatch exam published notifications after database transaction completes
         for mark in saved_marks:
             send_marks_released_notification(mark)
 
-        return Response({"message": f"Marks successfully updated for {len(saved_marks)} student(s)."}, status=status.HTTP_200_OK)
+        batch_summary = compute_batch_summary_stats(exam)
+        serialized_marks = MarkSerializer(saved_marks, many=True, context={'request': request}).data
+
+        return Response({
+            "message": f"Marks successfully updated for {len(saved_marks)} student(s).",
+            "batch_summary": batch_summary,
+            "marks": serialized_marks
+        }, status=status.HTTP_200_OK)
 
 
 class StudentExamListAPIView(APIView):
@@ -1207,7 +1341,11 @@ class StudentExamListAPIView(APIView):
             total_mark = float(exam.total_mark)
             pass_mark = float(exam.pass_mark)
 
-            if mark and mark.obtained_mark is not None:
+            if mark and getattr(mark, 'is_absent', False):
+                is_pass = False
+                status_str = "ABSENT"
+                obtained_mark = None
+            elif mark and mark.obtained_mark is not None:
                 is_pass = bool(mark.obtained_mark >= exam.pass_mark)
                 status_str = "published"
             else:
@@ -1246,13 +1384,14 @@ class StudentExamAnalyticsAPIView(APIView):
         is_pass = bool(mark.obtained_mark >= exam.pass_mark) if (mark and mark.obtained_mark is not None) else False
 
         all_marks = Mark.objects.filter(exam=exam)
-        total_students = all_marks.count()
+        attended_marks = all_marks.filter(is_absent=False, obtained_mark__isnull=False)
+        total_students = attended_marks.count()
 
         if total_students > 0:
-            avg_val = all_marks.aggregate(avg=Avg('obtained_mark'))['avg']
-            max_val = all_marks.aggregate(max=Max('obtained_mark'))['max']
-            min_val = all_marks.aggregate(min=Min('obtained_mark'))['min']
-            passed_count = all_marks.filter(obtained_mark__gte=exam.pass_mark).count()
+            avg_val = attended_marks.aggregate(avg=Avg('obtained_mark'))['avg']
+            max_val = attended_marks.aggregate(max=Max('obtained_mark'))['max']
+            min_val = attended_marks.aggregate(min=Min('obtained_mark'))['min']
+            passed_count = attended_marks.filter(obtained_mark__gte=exam.pass_mark).count()
 
             average_mark = round(float(avg_val), 1) if avg_val is not None else 0.0
             highest_mark = round(float(max_val), 1) if max_val is not None else 0.0

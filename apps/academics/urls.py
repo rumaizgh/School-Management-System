@@ -43,5 +43,7 @@ urlpatterns = [
     path('exams/<int:exam_id>/analytics/', ExamAnalyticsAPIView.as_view(), name='exam-analytics'),
     path('exams/<int:exam_id>/marks/', ExamMarksAPIView.as_view(), name='exam-marks-list'),
     path('exams/<int:exam_id>/marks/bulk/', ExamMarksAPIView.as_view(), name='exam-marks-bulk'),
+    path('exams/marks/<int:exam_id>/', ExamMarksAPIView.as_view(), name='exam-marks-alt'),
+    path('exams/marks/<int:exam_id>/bulk/', ExamMarksAPIView.as_view(), name='exam-marks-bulk-alt'),
     path('exams/<int:exam_id>/export/', ExportMark.as_view(), name='exam-export-marks'),
 ]

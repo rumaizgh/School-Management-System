@@ -64,9 +64,13 @@ class MarkResource(resources.ModelResource):
         return obj.exam.total_mark if (obj.exam and obj.exam.total_mark) else ""
 
     def dehydrate_obtained_mark(self, obj):
+        if getattr(obj, 'is_absent', False):
+            return "ABSENT"
         return obj.obtained_mark
 
     def dehydrate_percentage(self, obj):
+        if getattr(obj, 'is_absent', False):
+            return "ABSENT"
         return obj.percentage
 
     
