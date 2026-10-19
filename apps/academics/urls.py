@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,LatestAssignedFeesAPIView,ExportFee,FeeExportPreview,ExportMark,MarkExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, GradeListCreateAPIView, GradeDetailAPIView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksAPIView, StudentExamListAPIView, StudentExamAnalyticsAPIView, PayrollViewSet
+from .views import CreateClass,ViewAllClassTeacher,ViewStudentsByClass,ViewTeachersByClass,TimeTablesView,PaymentListCreateAPIView,FeeListCreateAPIView,ViewFee,CreatePayment,ViewFeeByStudent,LatestAssignedFeesAPIView,ExportFee,FeeExportPreview,ExportMark,MarkExportPreview,SearchPaymentHistory,MarkListCreateAPIView,MarkUpdateAPIView,MarkByStudentAPIView,MarkBySubjectAPIView,InstituteView, GradeListCreateAPIView, GradeDetailAPIView, ExamListCreateAPIView, ExamAnalyticsAPIView, ExamMarksAPIView, StudentExamListAPIView, StudentExamAnalyticsAPIView, PayrollViewSet, AvailableExamSlotsView
 from django.urls import path, include, re_path
 
 router = DefaultRouter()
@@ -23,6 +23,7 @@ urlpatterns = [
     path('fee/student/<int:student_id>/', ViewFeeByStudent.as_view()),
     path('fee/classs/<int:classs_id>/', ViewFee.as_view()),
     path('timetables/', TimeTablesView.as_view(), name='createtimetable'),
+    path('timetables/available-exams/', AvailableExamSlotsView.as_view(), name='timetable-available-exams'),
     path('timetables/<int:id>/', TimeTablesView.as_view(), name='timetable-detail'),
     path('payment/', CreatePayment.as_view(), name='createpayment'),
     path('payment/<int:student_id>/', CreatePayment.as_view(), name='getpayment'),

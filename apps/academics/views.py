@@ -1037,6 +1037,129 @@ class GradeDetailAPIView(APIView):
         grade.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
+class AvailableExamSlotsView(APIView):
+    """
+    GET /api/academics/timetables/available-exams/
+    (also reachable as /api/fee/timetables/available-exams/ and /api/batch/timetables/available-exams/)
+
+    Returns exam timetable slots that are:
+      1. is_exam = True
+      2. Have NO attendance session with recorded records
+      3. Are NOT already linked to an active (non-deleted) Exam
+
+    Optional query parameters:
+      - teacher_id  : filter by teacher
+      - class_id    : filter by class/batch
+      - date        : YYYY-MM-DD, filter by timetable date field
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Exists, OuterRef
+        from apps.attendance.models import AttendanceSession
+
+        user = request.user
+
+        # Base queryset: exam-only slots, scoped to institute
+        qs = TimeTable.objects.filter(is_exam=True)
+        qs = InstituteFilterBackend().filter_queryset(request, qs, self)
+        if not user.is_superuser and user.institute:
+            qs = qs.filter(institute=user.institute)
+
+        # Teacher scoping: teachers only see their own slots
+        if user.user_type == 'teacher':
+            qs = qs.filter(teacher=user)
+
+        # Optional filters
+        teacher_id = request.query_params.get('teacher_id') or request.query_params.get('teacher')
+        class_id   = request.query_params.get('class_id')   or request.query_params.get('class')
+        date_str   = request.query_params.get('date')
+
+        if teacher_id:
+            try:
+                qs = qs.filter(teacher_id=int(teacher_id))
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "Invalid teacher_id. Expected an integer."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        if class_id:
+            try:
+                qs = qs.filter(classs_id=int(class_id))
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "Invalid class_id. Expected an integer."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        if date_str:
+            try:
+                from datetime import datetime as _dt
+                parsed_date = _dt.strptime(date_str.strip(), '%Y-%m-%d').date()
+                qs = qs.filter(date=parsed_date)
+            except (ValueError, AttributeError):
+                return Response(
+                    {"error": "Invalid date format. Expected YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Exclude slots that already have a session with attendance records
+        has_recorded_session = Exists(
+            AttendanceSession.objects.filter(
+                timetable=OuterRef('pk'),
+                records__isnull=False
+            ).distinct()
+        )
+
+        # Exclude slots already assigned to an active (non-deleted) exam
+        is_exam_assigned = Exists(
+            Exam.objects.filter(
+                timetable=OuterRef('pk'),
+                is_deleted=False
+            )
+        )
+
+        qs = qs.annotate(
+            has_recorded_session=has_recorded_session,
+            is_exam_assigned=is_exam_assigned
+        ).filter(
+            has_recorded_session=False,
+            is_exam_assigned=False
+        ).select_related('teacher', 'subject', 'classs').order_by('date', 'start_time')
+
+        results = []
+        for idx, slot in enumerate(qs):
+            start_t = slot.start_time.strftime("%H:%M:%S") if slot.start_time else None
+            end_t   = slot.end_time.strftime("%H:%M:%S")   if slot.end_time   else None
+            period  = slot.period_number if slot.period_number is not None else (idx + 1)
+
+            results.append({
+                "id":                slot.id,
+                "period_number":     period,
+                "date":              slot.date.strftime("%Y-%m-%d") if slot.date else None,
+                "day":               slot.day,
+                "start_time":        start_t,
+                "end_time":          end_t,
+                "subject":           slot.subject_id,
+                "subject_name":      slot.subject.subject_name if slot.subject else None,
+                "classs":            slot.classs_id,
+                "classs_name":       slot.classs.classs if slot.classs else None,
+                "teacher":           slot.teacher_id,
+                "teacher_name":      slot.teacher.name if slot.teacher else None,
+                "is_exam":           True,
+                "session_id":        None,
+                "is_already_recorded": False,
+            })
+
+        return Response({
+            "status":      "success",
+            "total_slots": len(results),
+            "results":     results,
+        }, status=status.HTTP_200_OK)
+
+
 class ExamListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
