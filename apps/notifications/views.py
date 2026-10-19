@@ -118,7 +118,15 @@ class NotificationHistoryView(APIView):
             # 1. Student / Others: Return ONLY notifications where notification.user_id == authenticated_student.id
             notifications_qs = NotificationHistory.objects.filter(user=user)
 
-        unread_count = NotificationHistory.objects.filter(user=user, is_read=False).count()
+        # Exclude leave request notifications (leave_request, leave_approved, leave_rejected)
+        # Leave requests are managed on their own dedicated screen (/api/attendance/leave-requests/)
+        LEAVE_NOTIFICATION_TYPES = ['leave_request', 'leave_approved', 'leave_rejected']
+        notifications_qs = notifications_qs.exclude(type__in=LEAVE_NOTIFICATION_TYPES)
+
+        unread_count = NotificationHistory.objects.filter(
+            user=user,
+            is_read=False
+        ).exclude(type__in=LEAVE_NOTIFICATION_TYPES).count()
 
         notif_type = request.query_params.get('type')
         if notif_type:
