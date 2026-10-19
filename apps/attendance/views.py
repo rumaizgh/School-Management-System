@@ -20,7 +20,7 @@ from apps.account.serializers import UserDataSerializer
 from apps.academics.models import Batch
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, F
 from apps.account.pagination import CustomPagination
 from rest_framework.pagination import PageNumberPagination
 
@@ -163,15 +163,57 @@ class AttendanceSessionCreate(APIView):
         return Response({"subjects": subjects_data, "batches": batches_data})
 
 
+def apply_session_sorting(records, request):
+    ordering = (
+        request.query_params.get('ordering') or
+        request.query_params.get('sort') or
+        request.query_params.get('sort_by') or
+        request.query_params.get('order_by')
+    )
+    if ordering:
+        order_key = ordering.strip().lower()
+        if order_key in ['timetable', 'timetable_order', 'timetable_desc']:
+            # Latest date first; within each date, sorted in timetable time / period order (e.g. Period 1, Period 2...)
+            return records.order_by('-date', 'time', 'timetable__period_number', '-id')
+        elif order_key in ['timetable_asc', 'timetable_chronological']:
+            # Chronological date and timetable period order
+            return records.order_by('date', 'time', 'timetable__period_number', 'id')
+        elif order_key in ['-timetable']:
+            return records.order_by('-date', '-time', '-id')
+        elif order_key in ['created_at', 'created_at_asc']:
+            return records.order_by(F('created_at').asc(nulls_first=True), 'id')
+        elif order_key in ['-created_at', 'created_at_desc', 'default']:
+            return records.order_by(F('created_at').desc(nulls_last=True), '-id')
+        elif order_key in ['date', 'date_asc']:
+            return records.order_by('date', 'time', 'id')
+        elif order_key in ['-date', 'date_desc']:
+            return records.order_by('-date', '-time', '-id')
+        else:
+            raw_fields = [f.strip() for f in ordering.split(',') if f.strip()]
+            valid_fields = {'created_at', '-created_at', 'date', '-date', 'time', '-time', 'id', '-id'}
+            clean_fields = []
+            for rf in raw_fields:
+                rf_lower = rf.lower()
+                if rf_lower in ['timetable', 'timetable_order']:
+                    clean_fields.extend(['-date', 'time'])
+                elif rf_lower in valid_fields:
+                    clean_fields.append(rf_lower)
+            if clean_fields:
+                return records.order_by(*clean_fields)
+            return records.order_by(F('created_at').desc(nulls_last=True), '-id')
+    # Default: newest created session first
+    return records.order_by(F('created_at').desc(nulls_last=True), '-id')
+
+
 class ViewAttendanceSessions(APIView):
     def get(self, request, id=None):
         if id:
             teacher = get_institute_scoped_object_or_404(UserData, request, id=id, user_type="teacher")
             records = AttendanceSession.objects.filter(
                 teacher=teacher
-            ).order_by("-date")
+            )
         else:
-            records = AttendanceSession.objects.all().order_by("-date")
+            records = AttendanceSession.objects.all()
 
         records = InstituteFilterBackend().filter_queryset(request, records, None)
 
@@ -181,6 +223,9 @@ class ViewAttendanceSessions(APIView):
                 records = records.filter(is_exam=True)
             elif is_exam.lower() in ['false', '0']:
                 records = records.filter(is_exam=False)
+
+        # Apply sorting: default by created_at (desc), or allow timetable order
+        records = apply_session_sorting(records, request)
 
         paginator = CustomPagination()
         paginated_records = paginator.paginate_queryset(records, request)
@@ -214,7 +259,7 @@ class GetSessionsByClass(APIView):
     def get(self, request, classs_id):
         records = AttendanceSession.objects.filter(
             classs_id=classs_id
-        ).order_by("-date")
+        )
         records = InstituteFilterBackend().filter_queryset(request, records, None)
 
         is_exam = request.query_params.get('is_exam')
@@ -223,6 +268,8 @@ class GetSessionsByClass(APIView):
                 records = records.filter(is_exam=True)
             elif is_exam.lower() in ['false', '0']:
                 records = records.filter(is_exam=False)
+
+        records = apply_session_sorting(records, request)
 
         paginator = CustomPagination()
         paginated_records = paginator.paginate_queryset(records, request)

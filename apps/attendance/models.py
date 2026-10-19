@@ -23,6 +23,10 @@ class AttendanceSession(models.Model):
     recorded_by = models.ForeignKey(UserData, on_delete=models.SET_NULL, null=True, blank=True, related_name='recorded_attendance_sessions')
     recorded_by_role = models.CharField(max_length=50, null=True, blank=True)
     is_substitution = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
 
     def save(self, *args, **kwargs):
         if not self.institute:

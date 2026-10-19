@@ -14,8 +14,10 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'timetable', 'teacher', 'teacher_name', 'date', 'time', 'end_time',
             'subject', 'subject_name', 'classs', 'classs_name', 'is_exam',
-            'recorded_by', 'recorded_by_name', 'recorded_by_role', 'is_substitution'
+            'recorded_by', 'recorded_by_name', 'recorded_by_role', 'is_substitution',
+            'created_at'
         ]
+        read_only_fields = ['created_at']
         extra_kwargs = {
             'teacher': {'required': False},
             'subject': {'required': False},
