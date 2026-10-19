@@ -9,7 +9,8 @@ from .views import (
     TeacherStudentAttendanceView,
     SearchSession,
     GetSessionsByClass,
-    StudentLeaveRequestViewSet
+    StudentLeaveRequestViewSet,
+    AttendanceAllocatedTeachersView
 )
 
 router = DefaultRouter()
@@ -18,6 +19,7 @@ router.register('leave-requests', StudentLeaveRequestViewSet, basename='leave-re
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('teachers/', AttendanceAllocatedTeachersView.as_view(), name='attendance-teachers'),
     path('atdsessioncreate/', AttendanceSessionCreate.as_view(), name='atdsessioncreate'),
     path('atdsessioncreate/<int:id>/', AttendanceSessionCreate.as_view(), name='atdsessioncreate'),
     path('viewsession/<int:id>/', ViewAttendanceSessions.as_view(), name='viewsession'),

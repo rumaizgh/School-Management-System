@@ -1,3 +1,5 @@
+from datetime import datetime
+from collections import defaultdict
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
@@ -717,3 +719,187 @@ class StudentLeaveRequestViewSet(viewsets.ModelViewSet):
 
         send_leave_rejected_notification(instance)
         return Response(self.get_serializer(instance).data)
+
+
+class AttendanceAllocatedTeachersView(APIView):
+    """
+    Dedicated endpoint for attendance-allocated teachers.
+    Returns only active teachers who have allocated subjects and classes/timetables.
+    Supports optional query filters:
+      - date: YYYY-MM-DD (filters teachers who have active timetable slots on that specific date/day)
+      - class_id: integer (filters teachers assigned to that specific class/batch)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.user_type == 'student':
+            return Response(
+                {"error": "You do not have permission to access this endpoint."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        date_str = request.query_params.get('date')
+        class_id_str = request.query_params.get('class_id') or request.query_params.get('class')
+
+        target_date = None
+        target_day = None
+        if date_str:
+            try:
+                target_date = datetime.strptime(date_str.strip(), '%Y-%m-%d').date()
+            except (ValueError, AttributeError):
+                return Response(
+                    {"error": "Invalid date format. Expected YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            weekday_map = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+            target_day = weekday_map[target_date.weekday()]
+
+        class_id = None
+        if class_id_str:
+            try:
+                class_id = int(class_id_str)
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "Invalid class_id. Expected an integer."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        teachers_qs = UserData.objects.filter(user_type='teacher', is_active=True)
+        teachers_qs = InstituteFilterBackend().filter_queryset(request, teachers_qs, self)
+        if not user.is_superuser and user.institute:
+            teachers_qs = teachers_qs.filter(institute=user.institute)
+
+        if target_date:
+            tt_qs = TimeTable.objects.filter(teacher__isnull=False)
+            tt_qs = InstituteFilterBackend().filter_queryset(request, tt_qs, self)
+            if not user.is_superuser and user.institute:
+                tt_qs = tt_qs.filter(institute=user.institute)
+            if class_id:
+                tt_qs = tt_qs.filter(classs_id=class_id)
+
+            active_timetable_filter = (
+                Q(date=target_date) |
+                (
+                    Q(day=target_day) &
+                    (Q(effective_from__isnull=True) | Q(effective_from__lte=target_date)) &
+                    (Q(effective_to__isnull=True) | Q(effective_to__gte=target_date)) &
+                    ~Q(is_override=True)
+                )
+            )
+            active_tids = set(tt_qs.filter(active_timetable_filter).values_list('teacher_id', flat=True))
+            teachers_qs = teachers_qs.filter(id__in=active_tids)
+        elif class_id:
+            class_filter = (
+                Q(classs__id=class_id) |
+                Q(subjects__classs_id=class_id) |
+                Q(subject__classs_id=class_id) |
+                Q(timetable__classs_id=class_id)
+            )
+            teachers_qs = teachers_qs.filter(class_filter)
+        else:
+            teachers_qs = teachers_qs.filter(
+                Q(subjects__isnull=False) |
+                Q(subject__isnull=False) |
+                Q(timetable__isnull=False) |
+                Q(classs__isnull=False)
+            )
+
+        teachers = list(teachers_qs.distinct().order_by('name', 'id'))
+        teacher_ids = [t.id for t in teachers]
+
+        teacher_subs = defaultdict(dict)
+        teacher_cls = defaultdict(dict)
+
+        if teacher_ids:
+            # 1. Subjects via Subject.teacher ForeignKey
+            subj_qs1 = Subject.objects.filter(teacher_id__in=teacher_ids).select_related('classs')
+            subj_qs1 = InstituteFilterBackend().filter_queryset(request, subj_qs1, self)
+            if not user.is_superuser and user.institute:
+                subj_qs1 = subj_qs1.filter(institute=user.institute)
+
+            for s in subj_qs1:
+                teacher_subs[s.teacher_id][s.id] = {
+                    'id': s.id,
+                    'subject_name': s.subject_name,
+                    'subject_code': s.subject_code or ''
+                }
+                if s.classs:
+                    teacher_cls[s.teacher_id][s.classs.id] = {
+                        'id': s.classs.id,
+                        'class_name': s.classs.classs
+                    }
+
+            # 2. UserData.subject M2M and UserData.classs M2M
+            users_with_m2m = UserData.objects.filter(id__in=teacher_ids).prefetch_related('subject__classs', 'classs')
+            for u in users_with_m2m:
+                for s in u.subject.all():
+                    if user.institute and s.institute_id and s.institute_id != user.institute_id:
+                        continue
+                    teacher_subs[u.id][s.id] = {
+                        'id': s.id,
+                        'subject_name': s.subject_name,
+                        'subject_code': s.subject_code or ''
+                    }
+                    if s.classs:
+                        teacher_cls[u.id][s.classs.id] = {
+                            'id': s.classs.id,
+                            'class_name': s.classs.classs
+                        }
+                for b in u.classs.all():
+                    if user.institute and b.institute_id and b.institute_id != user.institute_id:
+                        continue
+                    teacher_cls[u.id][b.id] = {
+                        'id': b.id,
+                        'class_name': b.classs
+                    }
+
+            # 3. TimeTable assignments
+            tt_data_qs = TimeTable.objects.filter(teacher_id__in=teacher_ids).select_related('subject', 'classs')
+            tt_data_qs = InstituteFilterBackend().filter_queryset(request, tt_data_qs, self)
+            if not user.is_superuser and user.institute:
+                tt_data_qs = tt_data_qs.filter(institute=user.institute)
+
+            for tt in tt_data_qs:
+                if tt.subject:
+                    teacher_subs[tt.teacher_id][tt.subject.id] = {
+                        'id': tt.subject.id,
+                        'subject_name': tt.subject.subject_name,
+                        'subject_code': tt.subject.subject_code or ''
+                    }
+                if tt.classs:
+                    teacher_cls[tt.teacher_id][tt.classs.id] = {
+                        'id': tt.classs.id,
+                        'class_name': tt.classs.classs
+                    }
+
+        results = []
+        for t in teachers:
+            subs = list(teacher_subs[t.id].values())
+            cls = list(teacher_cls[t.id].values())
+            # Exclude teachers without allocated subjects or classes
+            if not subs or not cls:
+                continue
+
+            profile_url = None
+            if t.profile:
+                try:
+                    profile_url = request.build_absolute_uri(t.profile.url)
+                except Exception:
+                    profile_url = t.profile.url
+
+            results.append({
+                'id': t.id,
+                'name': t.name or f"{t.first_name} {t.last_name}".strip() or t.email,
+                'email': t.email,
+                'phone': t.phone,
+                'profile': profile_url,
+                'subjects': subs,
+                'classes': cls
+            })
+
+        return Response({
+            "status": "success",
+            "total_teachers": len(results),
+            "results": results
+        }, status=status.HTTP_200_OK)

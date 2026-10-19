@@ -192,6 +192,15 @@ class ViewAllTeachers(ListAPIView):
         if gender:
             queryset = queryset.filter(gender__iexact=gender)
 
+        allocated_only = self.request.GET.get('allocated_only')
+        if allocated_only and allocated_only.lower() in ['true', '1', 'yes']:
+            queryset = queryset.filter(
+                Q(subjects__isnull=False) |
+                Q(subject__isnull=False) |
+                Q(timetable__isnull=False) |
+                Q(classs__isnull=False)
+            ).distinct()
+
         ordering = self.request.GET.get('ordering')
         if ordering:
             ordering_map = {
