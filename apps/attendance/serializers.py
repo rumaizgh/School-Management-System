@@ -229,7 +229,7 @@ class StudentLeaveRequestSerializer(serializers.ModelSerializer):
                 overlap_qs = overlap_qs.exclude(pk=self.instance.pk)
             if overlap_qs.exists():
                 raise serializers.ValidationError({
-                    "non_field_errors": ["An active (pending or approved) leave request already exists for this date range."]
+                    "non_field_errors": ["There is already a leave request on that date range."]
                 })
 
         return attrs
